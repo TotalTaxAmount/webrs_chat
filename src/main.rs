@@ -1,33 +1,28 @@
-use core::str;
-use std::{alloc::System, io::Read, net::{TcpListener, TcpStream}};
+use std::{collections::HashMap, io::Read, net::{TcpListener, TcpStream}, vec};
 use std::fs::File;
 
-use web_srv::respond;
+use flate2::{read::GzEncoder, Compression};
+use web_srv::{respond, ReqTypes, Request, Response};
 
 fn handle(mut stream: TcpStream) -> Result<(), Box<dyn std::error::Error>> {
-  let mut buff: [u8; 1024] = [0; 1024];
-  let _ = stream.read(&mut buff);
-  let req: Vec<&str> = str::from_utf8(&buff).unwrap().split(' ').collect();
+  let mut request: Vec<u8> = Vec::new();
+  let mut buf: [u8; 4096] = [0; 4096];
+  while !request.windows(4).any(|w| w == b"\r\n\r\n") {
+      let len = stream.read(&mut buf)?;
+      request.extend_from_slice(&buf[..len]);
+  }
 
-  if req.len() < 2 {
-    println!("[Error] wrong request len");
+  let request = Request::parse(request.as_slice());
+
+  if request.is_none() {
+    println!("[ERROR] Invalid request");
     return Ok(());
   } 
 
-  let req_type = req[0];
-  let mut path = String::from(req[1].trim_end_matches(".html"));
+  let mut path = String::from(request.as_ref().unwrap().endpoint.trim_end_matches(".html"));
 
-
-  if req_type != "GET" {
-    println!("[Error 403] Unsupported request type: {}", req_type);
-    respond(stream, String::from("
-      <html>
-        <body>
-          <h1>403 Forbidden</h1>
-        <body>
-      <html>
-    ").as_bytes(), 403, "text/html");
-    return Ok(());
+  if request.as_ref().unwrap().req_type != ReqTypes::GET {
+    println!("[ERROR] {:?} is not supported", request.as_ref().unwrap().req_type);
   }
 
   if path.ends_with('/') {
@@ -40,32 +35,56 @@ fn handle(mut stream: TcpStream) -> Result<(), Box<dyn std::error::Error>> {
   let mut f = File::open(format!("./content/{}", name));
 
 
+
   match &mut f {
     Ok(f) => { 
       let mut res_data: Vec<u8> = vec![];
-      let _ = f.read_to_end(&mut res_data); 
-      respond(stream, res_data.as_slice(), 200, match content_type { // TODO: This could be better
-        "png" => "image/png",
-        "jpg" => "image/jpeg",
-        "html" => "text/html",
-        "css" => "text/css",
-        "mp4" => "video/mp4",
-        "js" => "text/javascript",
-        _ => {
-          println!("[Error] unknown content type {}", content_type);
-          return Ok(());
-        }
-      });
+      let mut headers: HashMap<&str, &str> = HashMap::new();
+
+      let _ = f.read_to_end(&mut res_data);
+
+      if request.as_ref().unwrap().headers.contains_key("Accept-Encoding") && (request.unwrap().headers.get("Accept-Encoding").unwrap().contains("gzip") || request.unwrap().headers.get("Accept-Encoding").unwrap().contains("x-gzip")) {
+        println!("[INFO] Using gzip");
+        let mut encoder = GzEncoder::new(res_data.as_slice(), Compression::default());
+
+        let mut response: Vec<u8> = Vec::new();
+        
+        let _ = encoder.read_to_end(&mut response);
+        headers.insert("Content-Encoding", "gzip");
+        res_data = response;
+      } 
+      let res = Response {
+        code: 200,
+        content_type: match content_type {
+          "png" => "image/png",
+          "jpg" => "image/jpeg",
+          "html" => "text/html",
+          "css" => "text/css",
+          "mp4" => "video/mp4",
+          _ => {
+            println!("[ERROR] Unknown content type {}", content_type);
+            "text/plain"
+          }
+        },
+        data: res_data,
+        headers
+      };
+      respond(stream, res);
     },
     Err(_) => {
-      println!("[Error 404] {} not found", path);
-      respond(stream, 
-        String::from("
+      println!("[ERROR 404] {} not found", path);
+      let res = Response {
+        code: 404,
+        content_type: "text/html",
+        data: String::from("
         <html>
           <body>
             <h1>404 Not found</h1>
           </body>
-        </html>").as_bytes(), 404, "text/html");     
+        </html>").as_bytes().to_vec(),
+        headers: HashMap::new()
+      };
+      respond(stream, res);
     },
   }
   Ok(())
