@@ -1,9 +1,10 @@
 mod handlers;
 
 use core::str;
-use std::{collections::HashMap, io::Write, net::TcpStream};
+use std::{collections::HashMap, sync::Arc};
 
 use log::error;
+use tokio::{io::AsyncWriteExt, net::tcp::WriteHalf, sync::Mutex};
 use uid::Id;
 
 
@@ -65,6 +66,21 @@ impl<'a> Response<'a> {
   pub fn get_headers(&self) -> HashMap<&'a str, &'a str> {
     self.headers.clone()
   }
+
+  pub fn as_error(&self, description: &str) -> Self {
+    let http = format!("
+      <html>
+        <body>
+          <h1>{} {}</h1>
+        <body>
+      </html>
+    ", self.code, description);
+    
+    let mut res = Self::new(self.code, "text/http");
+    res.set_data(http.as_bytes().to_vec());
+
+    res
+  }
 }
 
 impl<'a> Request<'a> {
@@ -117,7 +133,8 @@ impl<'a> Request<'a> {
     }
 }
 
-pub fn respond(mut stream: TcpStream, mut res: Response) {
+pub async fn respond(stream: Arc<Mutex<WriteHalf<'_>>>, mut res: Response<'_>) {
+  let mut stream = stream.lock().await;
   let mut data = format!(
     "HTTP/1.1 {} OK\r\n",
     res.code
@@ -142,7 +159,7 @@ pub fn respond(mut stream: TcpStream, mut res: Response) {
 
   // println!("Res: {:?}", str::from_utf8(&mut data.clone()).unwrap());
 
-  let _ = stream.write_all(&data);
-  let _ = stream.flush();
+  let _ = stream.write_all(&data).await;
+  let _ = stream.flush().await;
 }
 
