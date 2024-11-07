@@ -1,8 +1,7 @@
 use std::{collections::HashMap, io::Read, usize};
 
-use flate2::{bufread::{DeflateEncoder, GzEncoder, ZlibEncoder}, Compression};
-use log::{info, trace, warn};
-use zstd::Encoder;
+use flate2::{bufread::GzEncoder, Compression};
+use log::{info, warn};
 
 use crate::Request;
 
@@ -11,7 +10,7 @@ pub mod post;
 
 pub fn handle_encoding<'a>(req: Request<'a>, mut buf: Vec<u8>) -> (Vec<u8>, Option<&'a str>) {
   if !req.get_headers().contains_key("Accept-Encoding") {
-    info!("Request {} does not support encoding", req.get_id());
+    info!("[Request {}] Request does not support compression", req.get_id());
     return (buf, None);
   }
 
@@ -54,7 +53,7 @@ pub fn handle_encoding<'a>(req: Request<'a>, mut buf: Vec<u8>) -> (Vec<u8>, Opti
         buf = read_buf;
       }
       _ => {
-        warn!("Unsupported compression algorithm '{}' for request {}", compression_type, req.get_id());
+        warn!("[Request {}] Unsupported compression algorithm '{}'", req.get_id(), compression_type);
       }
     }
   }

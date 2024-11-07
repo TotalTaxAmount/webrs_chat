@@ -1,5 +1,5 @@
 mod handlers;
-use std::{net::SocketAddr, ops::Deref, sync::Arc, time::Duration};
+use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 use log::{error, info, trace, warn};
 // use std::{net::{SocketAddr, TcpListener, TcpStream}, thread::sleep, time::Duration};
@@ -23,7 +23,7 @@ async fn handle(mut stream: TcpStream, addr: SocketAddr) -> Result<(), Box<dyn s
             Ok(len) => len,
             Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
               warn!("Would block, retrying...");
-              sleep(Duration::from_secs(5));
+              sleep(Duration::from_secs(5)).await;
               continue;
             }
             Err(e) => {
@@ -39,14 +39,14 @@ async fn handle(mut stream: TcpStream, addr: SocketAddr) -> Result<(), Box<dyn s
 
     if req.is_none() {
       error!("Invalid request");
-      respond(w_stream.clone(), Response::new(404, "").as_error("Not Found"));
+      respond(w_stream.clone(), Response::new(404, "").as_error("Not Found")).await;
       continue;
     } 
 
     let req_id = req.as_ref().unwrap().get_id();
 
     info!(
-      "Request {} from {}: {:?} HTTP/1.1 {}", 
+      "[Request {}] from {}: {:?} HTTP/1.1 {}", 
       req.as_ref().unwrap().get_id(), 
       addr.ip(), 
       req.as_ref().unwrap().req_type, 
@@ -61,14 +61,18 @@ async fn handle(mut stream: TcpStream, addr: SocketAddr) -> Result<(), Box<dyn s
     if let Some(r) = res {
       respond(w_stream.clone(), r).await;
     } else {
-      warn!("No response for request: {}", req_id);
+      warn!("[Request {}] No response", req_id);
       respond(w_stream.clone(), Response::new(400, "").as_error("Bad Request")).await;
     }
 
     if let Some(c) = req.as_ref().unwrap().get_headers().get("Connection") {
-      if c.to_ascii_lowercase() != "keep-alive" { break; }
+      if c.to_ascii_lowercase() != "keep-alive" { 
+        trace!("[Request {}] Connection: {}", req_id, c);
+        break; 
+      }
     } else {
-        break;
+      trace!("[Request {}] No connection header", req_id);
+      break;
     }
   }
 

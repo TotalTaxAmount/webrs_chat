@@ -1,7 +1,7 @@
 
 use std::{fs::File, io::Read};
 
-use log::{error, warn};
+use log::{error, trace, warn};
 
 use crate::{ReqTypes, Request, Response};
 
@@ -9,7 +9,7 @@ use super::handle_encoding;
 
 pub fn handle_get(req: Request) -> Option<Response> {
   if req.req_type != ReqTypes::GET {
-    warn!("Request method is {:?} not GET", req.req_type);
+    warn!("[Request {}] Request method is {:?} not GET", req.get_id(), req.req_type);
     return None;
   }
 
@@ -35,9 +35,11 @@ pub fn handle_get(req: Request) -> Option<Response> {
 
       let _ = f.read_to_end(&mut res_data);
       
+      let req_id = req.get_id();
       let final_data = handle_encoding(req, res_data);
       
       if final_data.1.is_some() {
+        trace!("[Request {}] Using '{}' compression", req_id,  final_data.1.as_ref().unwrap());
         res.add_header("Content-Encoding", final_data.1.unwrap());
       }
       res.set_code(200);

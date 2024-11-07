@@ -3,7 +3,7 @@ mod handlers;
 use core::str;
 use std::{collections::HashMap, sync::Arc};
 
-use log::error;
+use log::{error, trace};
 use tokio::{io::AsyncWriteExt, net::tcp::WriteHalf, sync::Mutex};
 use uid::Id;
 
@@ -96,7 +96,8 @@ impl<'a> Request<'a> {
 
       let base: Vec<&str> = parts[0].split(' ').collect();
       if base.len() < 2 {
-        error!("Invalid request len");
+        error!("Invalid request length");
+        trace!("Request string: {}", req_string);
         return None;
       }
 
