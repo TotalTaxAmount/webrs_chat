@@ -43,8 +43,7 @@ fn handle(mut stream: TcpStream) -> Result<(), Box<dyn std::error::Error>> {
 
       let _ = f.read_to_end(&mut res_data);
 
-      if request.as_ref().unwrap().headers.contains_key("Accept-Encoding") && (request.unwrap().headers.get("Accept-Encoding").unwrap().contains("gzip") || request.unwrap().headers.get("Accept-Encoding").unwrap().contains("x-gzip")) {
-        println!("[INFO] Using gzip");
+      if request.as_ref().unwrap().headers.contains_key("Accept-Encoding") && (request.as_ref().unwrap().headers.get("Accept-Encoding").unwrap().contains("gzip") || request.unwrap().headers.get("Accept-Encoding").unwrap().contains("x-gzip")) {
         let mut encoder = GzEncoder::new(res_data.as_slice(), Compression::default());
 
         let mut response: Vec<u8> = Vec::new();
@@ -61,6 +60,8 @@ fn handle(mut stream: TcpStream) -> Result<(), Box<dyn std::error::Error>> {
           "html" => "text/html",
           "css" => "text/css",
           "mp4" => "video/mp4",
+          "ico" => "image/vnd.microsoft.icon",
+          "js" => "text/javascript",
           _ => {
             println!("[ERROR] Unknown content type {}", content_type);
             "text/plain"
@@ -90,11 +91,18 @@ fn handle(mut stream: TcpStream) -> Result<(), Box<dyn std::error::Error>> {
   Ok(())
 }
 
-fn main() -> std::io::Result<()> {
-    let listener = TcpListener::bind("127.0.0.1:8080")?;
-    
-    for s in listener.incoming() {
-      let _ = handle(s?);
+#[tokio::main]
+async fn main() -> std::io::Result<()> {
+    let listener = TcpListener::bind("127.0.0.1:8080").unwrap();
+
+    while let Ok((stream, _)) = listener.accept() {
+        tokio::spawn(async move {
+          let _ = handle(stream);
+        });
     }
+    
+    // for s in listener.incoming() {
+    //   let _ = handle(s?);
+    // }
     Ok(())
 }

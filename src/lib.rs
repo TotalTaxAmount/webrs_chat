@@ -88,8 +88,6 @@ pub fn respond(mut stream: TcpStream, mut res: Response) {
   data.extend_from_slice(&b"\r\n".to_vec());
   data.extend_from_slice(&res.data);
 
-  // println!("Data: {:?}", data);
-
   // println!("Res: {:?}", str::from_utf8(&mut data.clone()).unwrap());
 
   let _ = stream.write_all(&data);
