@@ -1,28 +1,71 @@
+mod handlers;
+
 use core::str;
 use std::{collections::HashMap, io::Write, net::TcpStream};
 
+use log::error;
+use uid::Id;
 
-#[derive(Debug, PartialEq, Eq)]
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum ReqTypes {
     GET,
     POST
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Request<'a> {
   pub req_type: ReqTypes,
   pub endpoint: &'a str,
-  pub headers: HashMap<&'a str, &'a str>
+  pub headers: HashMap<&'a str, &'a str>,
+  id: Id<Self>
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Response<'a> {
-  pub code: u16,
-  pub content_type: &'a str,
-  pub data: Vec<u8>,
-  pub headers: HashMap<&'a str, &'a str>
+  code: u16,
+  content_type: &'a str,
+  data: Vec<u8>,
+  headers: HashMap<&'a str, &'a str>,
 }
 
-impl<'a> Response<'a> { }
+impl<'a> Response<'a> { 
+  pub fn new(code: u16, content_type: &'a str) -> Self {
+    Self {
+      code,
+      content_type,
+      data: Vec::new(),
+      headers: HashMap::new(),
+    }
+  }
+
+  pub fn set_data(&mut self, data: Vec<u8>) {
+    self.data = data;
+  }
+
+  pub fn add_header(&mut self, k: &'a str, v: &'a str) {
+    self.headers.insert(k, v);
+  }
+
+  pub fn set_code(&mut self, code: u16) {
+    self.code = code;
+  }
+
+  pub fn set_content_type(&mut self, content_type: &'a str) {
+    self.content_type = content_type;
+  }
+
+  pub fn get_code(&self) -> u16 {
+    self.code
+  }
+
+  pub fn get_content_type(&self) -> &'a str {
+    self.content_type
+  }
+
+  pub fn get_headers(&self) -> HashMap<&'a str, &'a str> {
+    self.headers.clone()
+  }
+}
 
 impl<'a> Request<'a> {
     // TODO: make Request::parse return a result and include error codes
@@ -31,13 +74,13 @@ impl<'a> Request<'a> {
       let parts: Vec<&str> = req_string.split('\n').collect();
           
       if parts.is_empty() {
-        println!("[ERROR] Invalid request");
+        error!("Invalid request");
         return None;
       }
 
       let base: Vec<&str> = parts[0].split(' ').collect();
       if base.len() < 2 {
-        println!("[ERROR] Invalid request line");
+        error!("Invalid request len");
         return None;
       }
 
@@ -46,7 +89,7 @@ impl<'a> Request<'a> {
             "GET" => ReqTypes::GET,
             "POST" => ReqTypes::POST,
             _ => {
-              println!("[ERROR] Unknown http method: {}", base[0]);
+              error!("Unknown http method: {}", base[0]);
               return None;
             }
         },
@@ -60,8 +103,17 @@ impl<'a> Request<'a> {
             } else {
               None
             }
-          }).collect()
+          }).collect(),
+        id: Id::new()
       })      
+    }
+
+    pub fn get_headers(&self) -> HashMap<&'a str, &'a str> {
+      self.headers.clone()
+    } 
+
+    pub fn get_id(&self) -> usize {
+      <Id<Request<'_>> as Clone>::clone(&self.id).get()
     }
 }
 
