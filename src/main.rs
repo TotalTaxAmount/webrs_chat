@@ -1,12 +1,12 @@
 mod handlers;
-use log::{info, warn};
-use std::{io::Read, net::{SocketAddr, TcpListener, TcpStream}};
+use log::{error, info, warn};
+use std::{io::Read, net::{TcpListener, TcpStream}};
 
 use handlers::{get::handle_get, post::handle_post};
 use web_srv::{respond, ReqTypes, Request, Response};
 
 
-fn handle(mut stream: TcpStream, addr: SocketAddr) -> Result<(), Box<dyn std::error::Error>> {
+fn handle(mut stream: TcpStream) -> Result<(), Box<dyn std::error::Error>> {
   let mut request: Vec<u8> = Vec::new();
   let mut buf: [u8; 4096] = [0; 4096];
   while !request.windows(4).any(|w| w == b"\r\n\r\n") {
@@ -21,7 +21,7 @@ fn handle(mut stream: TcpStream, addr: SocketAddr) -> Result<(), Box<dyn std::er
     return Ok(());
   } 
 
-  info!("Request {} from {}: {:?} HTTP/1.1 {}", req.as_ref().unwrap().get_id(), addr.ip(), req.as_ref().unwrap().req_type, req.as_ref().unwrap().endpoint);
+  info!("Request {}: {:?} HTTP/1.1 {}", req.as_ref().unwrap().get_id(), req.as_ref().unwrap().req_type, req.as_ref().unwrap().endpoint);
 
   let res: Option<Response<'_>>;
 
@@ -46,14 +46,8 @@ fn main() -> std::io::Result<()> {
     let listener = TcpListener::bind("0.0.0.0:8080")?;
     info!("Started listening on port 8080");
     
-    // while let Ok((stream, _)) = listener.accept() {
-    //   tokio::spawn(async move {
-    //     let _ = handle(stream);
-    //   });
-    // }
-
-    while let Ok((stream, addr)) = listener.accept() {
-      let _ = handle(stream, addr);
+    for s in listener.incoming() {
+      let _ = handle(s?);
     }
     
     Ok(())
