@@ -1,17 +1,18 @@
-mod handlers;
+pub mod handlers;
+pub mod api;
+
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
-use log::{error, info, trace, warn};
-// use std::{net::{SocketAddr, TcpListener, TcpStream}, thread::sleep, time::Duration};
+use log::{info, trace, warn};
+// use stdnet::{SocketAddr, TcpListener, TcpStream}, thread::sleep, time::Duration};
 
 use tokio::{io::AsyncReadExt, net::{TcpListener, TcpStream}, sync::Mutex, time::sleep};
-use handlers::{get::handle_get, post::handle_post};
+use handlers::Handlers;
 use web_srv::{respond, ReqTypes, Request, Response};
 
 
 async fn handle(mut stream: TcpStream, addr: SocketAddr) -> Result<(), Box<dyn std::error::Error>> {
   let (mut r_stream, w_stream) = stream.split();
-
   let w_stream = Arc::new(Mutex::new(w_stream));
 
   loop {
@@ -35,37 +36,34 @@ async fn handle(mut stream: TcpStream, addr: SocketAddr) -> Result<(), Box<dyn s
         request.extend_from_slice(&buf[..len]);
     }
 
-    let req = Request::parse(request.as_slice());
+    let req: Request = match Request::parse(request.as_slice()) {
+        Ok(r) => r,
+        Err(e) => {
+          respond(w_stream.clone(), Response::new(e.get_code(), "text/html").with_description(e.get_description())).await;
+          continue;
+        },
+    }; 
 
-    if req.is_none() {
-      error!("Invalid request");
-      respond(w_stream.clone(), Response::new(404, "").as_error("Not Found")).await;
-      continue;
-    } 
-
-    let req_id = req.as_ref().unwrap().get_id();
+    let req_id = req.get_id();
 
     info!(
-      "[Request {}] from {}: {:?} HTTP/1.1 {}", 
-      req.as_ref().unwrap().get_id(), 
+      "[Request {}] from {}: {:?} {} HTTP/1.1", 
+      req_id, 
       addr.ip(), 
-      req.as_ref().unwrap().req_type, 
-      req.as_ref().unwrap().endpoint
+      req.get_type(), 
+      req.get_endpoint()
     );
 
-    let res = match req.as_ref().unwrap().req_type {
-        ReqTypes::GET => handle_get(req.clone().unwrap()),
-        ReqTypes::POST => handle_post(req.clone().unwrap())
-    };
+    let res = Handlers::handle_request(req.clone());
     
     if let Some(r) = res {
       respond(w_stream.clone(), r).await;
     } else {
       warn!("[Request {}] No response", req_id);
-      respond(w_stream.clone(), Response::new(400, "").as_error("Bad Request")).await;
+      respond(w_stream.clone(), Response::new(400, "").with_description("Bad Request")).await;
     }
 
-    if let Some(c) = req.as_ref().unwrap().get_headers().get("Connection") {
+    if let Some(c) = req.get_headers().get("Connection") {
       if c.to_ascii_lowercase() != "keep-alive" { 
         trace!("[Request {}] Connection: {}", req_id, c);
         break; 

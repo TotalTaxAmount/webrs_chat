@@ -5,16 +5,20 @@ use log::{error, trace, warn};
 
 use crate::{ReqTypes, Request, Response};
 
-use super::handle_encoding;
+use super::Handlers;
 
 pub fn handle_get(req: Request) -> Option<Response> {
-  if req.req_type != ReqTypes::GET {
-    warn!("[Request {}] Request method is {:?} not GET", req.get_id(), req.req_type);
+  if req.get_type() != ReqTypes::GET {
+    warn!("[Request {}] Request method is {:?} not GET", req.get_id(), req.get_type());
     return None;
   }
 
-  let mut path: String = req.endpoint.to_string();
-  
+  let mut path: String = req.get_endpoint().to_string();
+
+  // if path.starts_with("/api") {
+  //   trace!("[Request {}] Passing to api", req.get_id());
+  //   return Api::handle_api_request(req);
+  // }
 
   if path.ends_with('/') {
    path.push_str("index"); 
@@ -36,7 +40,7 @@ pub fn handle_get(req: Request) -> Option<Response> {
       let _ = f.read_to_end(&mut res_data);
       
       let req_id = req.get_id();
-      let final_data = handle_encoding(req, res_data);
+      let final_data = Handlers::handle_encoding(req, res_data);
       
       if final_data.1.is_some() {
         trace!("[Request {}] Using '{}' compression", req_id,  final_data.1.as_ref().unwrap());

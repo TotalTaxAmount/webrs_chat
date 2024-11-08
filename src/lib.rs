@@ -1,9 +1,10 @@
-mod handlers;
+pub mod handlers;
+pub mod api;
 
-use core::str;
+use core::{fmt, str};
 use std::{collections::HashMap, sync::Arc};
 
-use log::{error, trace};
+use log::{debug, error, trace};
 use tokio::{io::AsyncWriteExt, net::tcp::WriteHalf, sync::Mutex};
 use uid::Id;
 
@@ -13,11 +14,35 @@ pub enum ReqTypes {
     GET,
     POST
 }
+
+#[derive(Debug, Clone)]
+pub struct ResError<'r> {
+  code: u16,
+  description: &'r str
+}
+
+impl<'r> fmt::Display for ResError<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Req error! {} {}", self.code, self.description)
+    }
+}
+
+impl ResError<'_> {
+    pub fn get_code(&self) -> u16 {
+      self.code
+    }
+
+    pub fn get_description(&self) -> &str {
+      self.description
+    }
+}
 #[derive(Debug, Clone)]
 pub struct Request<'a> {
-  pub req_type: ReqTypes,
-  pub endpoint: &'a str,
-  pub headers: HashMap<&'a str, &'a str>,
+  req_type: ReqTypes,
+  content_type: &'a str,
+  endpoint: &'a str,
+  data: Vec<u8>,
+  headers: HashMap<&'a str, &'a str>,
   id: Id<Self>
 }
 
@@ -27,6 +52,7 @@ pub struct Response<'a> {
   content_type: &'a str,
   data: Vec<u8>,
   headers: HashMap<&'a str, &'a str>,
+  id: Id<Self>
 }
 
 impl<'a> Response<'a> { 
@@ -36,6 +62,7 @@ impl<'a> Response<'a> {
       content_type,
       data: Vec::new(),
       headers: HashMap::new(),
+      id: Id::new()
     }
   }
 
@@ -67,7 +94,7 @@ impl<'a> Response<'a> {
     self.headers.clone()
   }
 
-  pub fn as_error(&self, description: &str) -> Self {
+  pub fn with_description(&self, description: &str) -> Self {
     let http = format!("
       <html>
         <body>
@@ -85,53 +112,84 @@ impl<'a> Response<'a> {
 
 impl<'a> Request<'a> {
     // TODO: make Request::parse return a result and include error codes
-    pub fn parse(request: &'a [u8]) -> Option<Self> {
-      let req_string: &str = str::from_utf8(&request).unwrap();
-      let parts: Vec<&str> = req_string.split('\n').collect();
-          
-      if parts.is_empty() {
-        error!("Invalid request");
-        return None;
-      }
+  pub fn parse(request: &'a [u8]) -> Result<Self, ResError> {
+    let header_body_split = b"\r\n\r\n";
+    let split_index = request.windows(header_body_split.len())
+      .position(|w| w == header_body_split);
 
-      let base: Vec<&str> = parts[0].split(' ').collect();
-      if base.len() < 2 {
-        error!("Invalid request length");
-        trace!("Request string: {}", req_string);
-        return None;
-      }
-
-      Some(Self {
-        req_type: match base[0] {
-            "GET" => ReqTypes::GET,
-            "POST" => ReqTypes::POST,
-            _ => {
-              error!("Unknown http method: {}", base[0]);
-              return None;
-            }
+    let (header_bytes, body_bytes) = match split_index {
+        Some(i) => (&request[..i], &request[i + header_body_split.len()..]),
+        None => {
+          error!("Invalid request");
+          return Err(ResError { code: 400, description: "Bad Request" });
         },
-        endpoint: base[1],
-        headers: parts[1..]
-          .into_iter()
-          .filter_map(|f| {
-            let mut s = f.split(": ");
-            if let (Some(key), Some(value)) = (s.next(), s.next()) {
-              Some((key.trim(), value.trim()))
-            } else {
-              None
-            }
-          }).collect(),
-        id: Id::new()
-      })      
+    };
+    let header_str: &str = str::from_utf8(&header_bytes).unwrap();
+    let parts: Vec<&str> = header_str.split('\n').collect();
+
+    if parts.is_empty() {
+      error!("Invalid request");
+      return Err(ResError { code: 400, description: "Bad Request"});
     }
 
-    pub fn get_headers(&self) -> HashMap<&'a str, &'a str> {
-      self.headers.clone()
-    } 
-
-    pub fn get_id(&self) -> usize {
-      <Id<Request<'_>> as Clone>::clone(&self.id).get()
+    let base: Vec<&str> = parts[0].split(' ').collect();
+    if base.len() < 2 {
+      error!("Invalid request length");
+      trace!("Request string: {}", header_str);
+      return Err(ResError { code: 400, description: "Bad Request"});
     }
+
+    let headers: HashMap<&str, &str> = parts[1..]
+    .into_iter()
+    .filter_map(|f| {
+      let mut s = f.split(": ");
+      if let (Some(key), Some(value)) = (s.next(), s.next()) {
+        Some((key.trim(), value.trim()))
+      } else {
+        None
+      }
+    }).collect();
+
+    Ok(Self {
+      req_type: match base[0] {
+          "GET" => ReqTypes::GET,
+          "POST" => ReqTypes::POST,
+          _ => {
+            error!("Unknown http method: {}", base[0]);
+            return Err(ResError { code: 501, description: "Not Implemented"});
+          }
+      },
+      endpoint: base[1],
+      headers: headers.clone(),
+      id: Id::new(),
+      content_type: headers.get("Content-Type").or(Some(&"none")).unwrap(),
+      data: body_bytes.to_vec()
+    })      
+  }
+
+  pub fn get_type(&self) -> ReqTypes {
+    self.req_type
+  }
+
+  pub fn get_content_type(&self) -> &str {
+    &self.content_type
+  }
+
+  pub fn get_endpoint(&self) -> &str {
+    &self.endpoint
+  }
+
+  pub fn get_data(&self) -> Vec<u8> {
+    self.data.clone()
+  } 
+
+  pub fn get_headers(&self) -> HashMap<&'a str, &'a str> {
+    self.headers.clone()
+  } 
+
+  pub fn get_id(&self) -> usize {
+    <Id<Request<'_>> as Clone>::clone(&self.id).get()
+  }
 }
 
 pub async fn respond(stream: Arc<Mutex<WriteHalf<'_>>>, mut res: Response<'_>) {
