@@ -10,13 +10,13 @@ impl<'a> Method for ApiTest<'a> {
         self.endpoint
     }
 
-    fn handle_get(&self, req: crate::Request) -> Option<crate::Response> {
+    fn handle_get<'g>(&self, req: crate::Request) -> Option<crate::Response<'g>> {
       let mut res = Response::new(200, "text/plain");
-      res.set_data(self.x.to_string().as_bytes().to_vec());
+      res.set_data(self.x.to_string().into_bytes());
       Some(res)
     }
 
-    fn handle_post(&mut self, req: crate::Request) -> Option<Response> {
+    fn handle_post<'p>(&mut self, req: crate::Request) -> Option<Response<'p>> {
       self.x = u8::from_be(*req.get_data().get(0).unwrap());
       Some(Response::basic(200, "OK"))
     }
