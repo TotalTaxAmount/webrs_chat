@@ -18,6 +18,6 @@ impl<'a> Method for ApiTest<'a> {
 
     fn handle_post(&mut self, req: crate::Request) -> Option<Response> {
       self.x = u8::from_be(*req.get_data().get(0).unwrap());
-      Some(Response::new(200, "text/html").with_description("OK"))
+      Some(Response::basic(200, "OK"))
     }
 }

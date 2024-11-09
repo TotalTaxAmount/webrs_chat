@@ -94,16 +94,16 @@ impl<'a> Response<'a> {
     self.headers.clone()
   }
 
-  pub fn with_description(&self, description: &str) -> Self {
+  pub fn basic(code: u16, description: &str) -> Self {
     let http = format!("
       <html>
         <body>
           <h1>{} {}</h1>
         <body>
       </html>
-    ", self.code, description);
+    ", code, description);
     
-    let mut res = Self::new(self.code, "text/http");
+    let mut res = Self::new(code, "text/html");
     res.set_data(http.as_bytes().to_vec());
 
     res

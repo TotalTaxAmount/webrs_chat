@@ -15,11 +15,6 @@ pub fn handle_get(req: Request) -> Option<Response> {
 
   let mut path: String = req.get_endpoint().to_string();
 
-  // if path.starts_with("/api") {
-  //   trace!("[Request {}] Passing to api", req.get_id());
-  //   return Api::handle_api_request(req);
-  // }
-
   if path.ends_with('/') {
    path.push_str("index"); 
   }
@@ -30,7 +25,10 @@ pub fn handle_get(req: Request) -> Option<Response> {
   let mut f = File::open(format!("./content/{}", f_name));
   let mut res = Response::new(200, "text/html");
 
-  let mime_type = Box::leak(mime_guess::from_path(f_name.clone()).first().unwrap().essence_str().to_string().into_boxed_str()); // Holy shit
+  let mime_type = Box::leak(match mime_guess::from_path(f_name.clone()).first() {
+    Some(t) => t.essence_str().to_string().into_boxed_str(),
+    None => "text/plain".to_string().into_boxed_str(),
+  });
 
 
   match &mut f {

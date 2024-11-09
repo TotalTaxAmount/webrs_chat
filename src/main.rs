@@ -39,7 +39,7 @@ async fn handle(mut stream: TcpStream, addr: SocketAddr) -> Result<(), Box<dyn s
     let req: Request = match Request::parse(request.as_slice()) {
         Ok(r) => r,
         Err(e) => {
-          respond(w_stream.clone(), Response::new(e.get_code(), "text/html").with_description(e.get_description())).await;
+          respond(w_stream.clone(), Response::basic(e.get_code(), e.get_description())).await;
           continue;
         },
     }; 
@@ -60,7 +60,7 @@ async fn handle(mut stream: TcpStream, addr: SocketAddr) -> Result<(), Box<dyn s
       respond(w_stream.clone(), r).await;
     } else {
       warn!("[Request {}] No response", req_id);
-      respond(w_stream.clone(), Response::new(400, "").with_description("Bad Request")).await;
+      respond(w_stream.clone(), Response::basic(400, "Bad Request")).await;
     }
 
     if let Some(c) = req.get_headers().get("Connection") {

@@ -1,12 +1,13 @@
-use std::{collections::HashMap, io::Read, usize};
+use std::{collections::HashMap, io::Read, sync::{Arc, Mutex}, usize};
 
 use flate2::{bufread::GzEncoder, Compression};
 use get::handle_get;
-use log::{info, warn};
+use log::{info, trace, warn};
 
-use crate::{api::{api::Api, Method}, Request, Response};
+use crate::{api::{api::Api, endpoints::test::ApiTest, Method}, Request, Response};
 
 pub mod get;
+
 
 pub struct Handlers {}
 
@@ -67,15 +68,15 @@ impl<'a> Handlers {
 
   pub fn handle_request(req: Request) -> Option<Response> {
     if req.get_endpoint().starts_with("/api") {
-      return Api::handle_api_request(req);
+      trace!("WTH");
     }
 
     match req.get_type() {
-        crate::ReqTypes::GET => { return handle_get(req); }
-        crate::ReqTypes::POST => {
-          warn!("[Request {}] POST not allowed for non-api methods", req.get_id());
-          return Some(Response::new(405, "text/html").with_description("Method Not Allowed"));
-        },
+      crate::ReqTypes::GET => { return handle_get(req); }
+      crate::ReqTypes::POST => {
+        warn!("[Request {}] POST not allowed for non-api methods", req.get_id());
+        return Some(Response::basic(405, "Method Not Allowed"));
+      },
     }
   }
 }
