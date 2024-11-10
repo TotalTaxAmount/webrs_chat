@@ -21,7 +21,7 @@ impl Api {
       }
   }
 
-  pub fn handle_api_request(&self, req: Request) -> Option<Response> {
+  pub fn handle_api_request<'a, 'b>(&'a self, req: Request<'b>) -> Option<Response<'b>> {
     let endpoint = match req.get_endpoint().split_once("/api") {
       Some(s) if s.1 != "" => s.1,
       _ => {
@@ -42,19 +42,18 @@ impl Api {
         }
       };
 
-      if locked_m.get_endpoint() == endpoint {
+      if locked_m.get_endpoint().starts_with(endpoint) {
         res = match req.get_type() {
           ReqTypes::GET => locked_m.handle_get(req.clone()),
           ReqTypes::POST => locked_m.handle_post(req.clone())
-      };
+        };
 
         if res.is_some() {
-          trace!("Res: {:?}", res);
           return res;
         }
       }
     }
-
+    
     None
   }
 }

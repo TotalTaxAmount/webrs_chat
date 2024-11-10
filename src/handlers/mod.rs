@@ -71,7 +71,7 @@ impl<'a> Handlers {
     if req.get_endpoint().starts_with("/api") {
       trace!("[Request {}] Passing to api", req.get_id());
 
-      let api_lock  = match api.lock() {
+      let api_lock  = match api.lock() { // Api is a LazyLock<Mutex<Api>>
         Ok(l) => l,
         Err(_) => {
           error!("[Request {}] Failed to lock api", req.get_id());
@@ -79,7 +79,7 @@ impl<'a> Handlers {
         },
       };
 
-      return api_lock.handle_api_request(req.clone());
+      return api_lock.handle_api_request(req);
     }
 
     match req.get_type() {

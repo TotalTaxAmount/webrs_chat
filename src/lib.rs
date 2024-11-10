@@ -70,6 +70,10 @@ impl<'a> Response<'a> {
     self.data = data;
   }
 
+  pub fn set_data_as_slice(&mut self, data: &[u8]) {
+    self.data = data.to_vec();
+  }
+
   pub fn add_header(&mut self, k: &'a str, v: &'a str) {
     self.headers.insert(k, v);
   }

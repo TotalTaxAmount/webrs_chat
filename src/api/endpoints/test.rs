@@ -1,4 +1,4 @@
-use crate::{api::Method, Response};
+use crate::{api::Method, Request, Response};
 
 pub struct ApiTest<'a> {
   pub x: u8,
@@ -10,14 +10,14 @@ impl<'a> Method for ApiTest<'a> {
         self.endpoint
     }
 
-    fn handle_get<'g>(&self, req: crate::Request) -> Option<crate::Response<'g>> {
+    fn handle_get<'g>(&self, req: Request) -> Option<Response<'g>> {
       let mut res = Response::new(200, "text/plain");
-      res.set_data(self.x.to_string().into_bytes());
+      res.set_data_as_slice(self.x.to_string().as_bytes());
       Some(res)
     }
 
-    fn handle_post<'p>(&mut self, req: crate::Request) -> Option<Response<'p>> {
-      self.x = u8::from_be(*req.get_data().get(0).unwrap());
+    fn handle_post<'p>(&mut self, req: Request) -> Option<Response<'p>> {
+      self.x = String::from_utf8(req.get_data()).unwrap().parse::<u8>().unwrap();
       Some(Response::basic(200, "OK"))
     }
 }
