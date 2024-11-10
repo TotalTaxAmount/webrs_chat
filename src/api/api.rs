@@ -46,7 +46,7 @@ impl Api {
         res = match req.get_type() {
           ReqTypes::GET => locked_m.handle_get(req.clone()),
           ReqTypes::POST => locked_m.handle_post(req.clone())
-      };
+        };
 
         if res.is_some() {
           trace!("Res: {:?}", res);
@@ -54,7 +54,7 @@ impl Api {
         }
       }
     }
-
+    
     None
   }
 }
