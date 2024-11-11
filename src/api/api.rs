@@ -1,11 +1,11 @@
-use std::sync::Arc;
+use std::{collections::HashMap, f32::consts::E, sync::Arc};
 
 use log::{error, trace};
 use tokio::sync::{Mutex, MutexGuard};
 
 use crate::{api::endpoints::test::ApiTest, ReqTypes, Request, Response};
 
-use super::Method;
+use super::{endpoints::file_upload::FileUpload, Method};
 
 #[derive(Clone)]
 pub struct Api {
@@ -16,7 +16,9 @@ impl Api {
   pub fn new() -> Self {
       Api {
         api_methods: vec![
-          Arc::new(Mutex::new(ApiTest {x: 0, endpoint: "/test"}))
+          Arc::new(Mutex::new(ApiTest {x: 0, endpoint: "/test"})),
+          Arc::new(Mutex::new(FileUpload { files: HashMap::new(), endpoint: "/file" }))
+        
         ]
       }
   }
@@ -41,8 +43,8 @@ impl Api {
           return None;
         }
       };
-
-      if locked_m.get_endpoint().starts_with(endpoint) {
+      
+      if endpoint.starts_with(locked_m.get_endpoint()) {
         res = match req.get_type() {
           ReqTypes::GET => locked_m.handle_get(req.clone()),
           ReqTypes::POST => locked_m.handle_post(req.clone())
