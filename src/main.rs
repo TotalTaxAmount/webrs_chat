@@ -16,9 +16,9 @@ async fn handle(mut stream: TcpStream, addr: SocketAddr) -> Result<(), Box<dyn s
   let w_stream = Arc::new(Mutex::new(w_stream));
 
   loop {
-    let mut request: Vec<u8> = Vec::new();
+    let mut raw: Vec<u8> = Vec::new();
     let mut buf: [u8; 4096] = [0; 4096];
-    while !request.windows(4).any(|w| w == b"\r\n\r\n") {
+    while !raw.windows(4).any(|w| w == b"\r\n\r\n") {
         let len = match r_stream.read(&mut buf).await {
             Ok(0) => return Ok(()),
             Ok(len) => len,
@@ -33,10 +33,10 @@ async fn handle(mut stream: TcpStream, addr: SocketAddr) -> Result<(), Box<dyn s
             }
         };
 
-        request.extend_from_slice(&buf[..len]);
+        raw.extend_from_slice(&buf[..len]);
     }
 
-    let req: Request = match Request::parse(request.as_slice()) {
+    let req: Request = match Request::parse(raw.as_slice()) {
         Ok(r) => r,
         Err(e) => {
           respond(w_stream.clone(), Response::basic(e.get_code(), e.get_description())).await;

@@ -67,7 +67,7 @@ impl<'a> Handlers {
 
   }
 
-  pub fn handle_request(req: Request) -> Option<Response> {
+  pub fn handle_request<'r>(req: Request<'r>) -> Option<Response<'r>> {
     if req.get_endpoint().starts_with("/api") {
       trace!("[Request {}] Passing to api", req.get_id());
 

@@ -3,27 +3,25 @@ use std::{collections::HashMap, f32::consts::E, sync::Arc};
 use log::{error, trace};
 use tokio::sync::{Mutex, MutexGuard};
 
-use crate::{api::endpoints::test::ApiTest, ReqTypes, Request, Response};
+use crate::{ReqTypes, Request, Response};
 
 use super::{endpoints::file_upload::FileUpload, Method};
 
 #[derive(Clone)]
 pub struct Api {
-  api_methods: Vec<Arc<Mutex<dyn Method + Send + Sync>>>
+  api_methods: Vec<Arc<Mutex<dyn for<'a> Method<'a> + Send + Sync>>>
 }
 
 impl Api {
   pub fn new() -> Self {
       Api {
         api_methods: vec![
-          Arc::new(Mutex::new(ApiTest {x: 0, endpoint: "/test"})),
           Arc::new(Mutex::new(FileUpload { files: HashMap::new(), endpoint: "/file" }))
-        
         ]
       }
   }
 
-  pub fn handle_api_request<'a, 'b>(&'a self, req: Request<'b>) -> Option<Response<'b>> {
+  pub fn handle_api_request<'s, 'r>(&'s self, req: Request<'r>) -> Option<Response<'r>> {
     let endpoint = match req.get_endpoint().split_once("/api") {
       Some(s) if s.1 != "" => s.1,
       _ => {

@@ -2,7 +2,7 @@ pub mod handlers;
 pub mod api;
 
 use core::{fmt, str};
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, fmt::Display, sync::Arc};
 
 use log::{debug, error, trace};
 use tokio::{io::AsyncWriteExt, net::tcp::WriteHalf, sync::Mutex};
@@ -111,6 +111,19 @@ impl<'a> Response<'a> {
     res.set_data(http.as_bytes().to_vec());
 
     res
+  }
+}
+
+impl Display for Request<'_> {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    writeln!(f, "{:?} {} HTTP/1.1", self.get_type(), self.get_endpoint())?;
+    for h in self.headers.clone() {
+      writeln!(f, "{}: {}", h.0, h.1)?;
+    }
+    writeln!(f)?;
+    write!(f, "{}", String::from_utf8(self.get_data()).unwrap_or("[Not utf8]".to_string()))?;
+
+    return writeln!(f);
   }
 }
 

@@ -3,10 +3,10 @@ use crate::{Request, Response};
 pub mod api;
 pub mod endpoints;
 
-pub trait Method: Send + Sync {
+pub trait Method<'f>: Send + Sync {
     fn get_endpoint(&self) -> &str;
 
-    fn handle_get<'a, 'b>(&'a self, req: Request<'b>) -> Option<Response<'b>>;
+    fn handle_get<'s, 'r>(&'s self, req: Request<'r>) -> Option<Response<'r>> where 'f: 'r ;
 
-    fn handle_post<'a, 'b>(&'a mut self, req: Request<'b>) -> Option<Response<'b>>;
+    fn handle_post<'s, 'r>(&'s mut self, req: Request<'r>) -> Option<Response<'r>> where 'f: 'r;
 }
