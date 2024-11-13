@@ -16,7 +16,7 @@ impl Api {
   pub fn new() -> Self {
       Api {
         api_methods: vec![
-          Arc::new(Mutex::new(FileUpload { files: HashMap::new(), endpoint: "/file" }))
+          Arc::new(Mutex::new(FileUpload { endpoint: "/file" }))
         ]
       }
   }

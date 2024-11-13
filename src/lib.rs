@@ -49,14 +49,14 @@ pub struct Request<'a> {
 #[derive(Debug, Clone)]
 pub struct Response<'a> {
   code: u16,
-  content_type: &'a str,
+  content_type: String,
   data: Vec<u8>,
   headers: HashMap<&'a str, &'a str>,
   id: Id<Self>
 }
 
 impl<'a> Response<'a> { 
-  pub fn new(code: u16, content_type: &'a str) -> Self {
+  pub fn new(code: u16, content_type: String) -> Self {
     Self {
       code,
       content_type,
@@ -82,7 +82,7 @@ impl<'a> Response<'a> {
     self.code = code;
   }
 
-  pub fn set_content_type(&mut self, content_type: &'a str) {
+  pub fn set_content_type(&mut self, content_type: String) {
     self.content_type = content_type;
   }
 
@@ -90,8 +90,8 @@ impl<'a> Response<'a> {
     self.code
   }
 
-  pub fn get_content_type(&self) -> &'a str {
-    self.content_type
+  pub fn get_content_type(&self) -> String {
+    self.content_type.clone()
   }
 
   pub fn get_headers(&self) -> HashMap<&'a str, &'a str> {
@@ -107,7 +107,7 @@ impl<'a> Response<'a> {
       </html>
     ", code, description);
     
-    let mut res = Self::new(code, "text/html");
+    let mut res = Self::new(code, "text/html".to_string());
     res.set_data(http.as_bytes().to_vec());
 
     res
@@ -217,7 +217,7 @@ pub async fn respond(stream: Arc<Mutex<WriteHalf<'_>>>, mut res: Response<'_>) {
   ).as_bytes().to_vec();
 
   if !res.headers.contains_key("Content-Type") {
-    res.headers.insert("Content-Type", res.content_type);
+    res.headers.insert("Content-Type", res.content_type.as_str());
   }
 
   if !res.headers.contains_key("Content-Length") {

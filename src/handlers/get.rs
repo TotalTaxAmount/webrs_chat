@@ -23,7 +23,7 @@ pub fn handle_get(req: Request) -> Option<Response> {
   let f_name = format!("{}.{}", &path[0..path.find(".").unwrap_or(path.len())], content_type);
 
   let mut f = File::open(format!("./content/{}", f_name));
-  let mut res = Response::new(200, "text/html");
+  let mut res = Response::new(200, "text/html".to_string());
 
   let mime_type = Box::leak(match mime_guess::from_path(f_name.clone()).first() {
     Some(t) => t.essence_str().to_string().into_boxed_str(),
@@ -45,7 +45,7 @@ pub fn handle_get(req: Request) -> Option<Response> {
         res.add_header("Content-Encoding", final_data.1.unwrap());
       }
       res.set_code(200);
-      res.set_content_type(mime_type);
+      res.set_content_type(mime_type.to_string());
       res.set_data(final_data.0);
 
     },
