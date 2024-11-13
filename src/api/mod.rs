@@ -4,9 +4,13 @@ pub mod api;
 pub mod endpoints;
 
 pub trait Method: Send + Sync {
-    fn get_endpoint(&self) -> &str;
+  fn get_endpoint(&self) -> &str;
 
-    fn handle_get<'s, 'r>(&'s self, req: Request<'r>) -> Option<Response<'r>> where 'r: 's ;
+  fn handle_get<'s, 'r>(&'s self, req: Request<'r>) -> Option<Response<'r>>
+  where
+    'r: 's;
 
-    fn handle_post<'s, 'r>(&'s mut self, req: Request<'r>) -> Option<Response<'r>> where 'r: 's;
+  fn handle_post<'s, 'r>(&'s mut self, req: Request<'r>) -> Option<Response<'r>>
+  where
+    'r: 's;
 }

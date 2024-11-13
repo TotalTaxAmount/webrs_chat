@@ -7,10 +7,13 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="chat-container">
+    <div class="login-container" id="login-container">
+        <input type="text" id="login-username" placeholder="Enter your username" required>
+        <button id="login-button">Login</button>
+    </div>
+    <div class="chat-container" id="chat-container" style="display: none;">
         <div id="chat-window" class="chat-window"></div>
         <div class="input-area">
-            <input type="text" id="username" placeholder="Enter your name" required>
             <input type="text" id="message-input" placeholder="Type a message" required>
             <button id="send-button">Send</button>
         </div>
