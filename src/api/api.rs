@@ -1,7 +1,7 @@
-use std::{collections::HashMap, f32::consts::E, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 
 use log::{error, trace};
-use tokio::sync::{Mutex, MutexGuard};
+use tokio::sync::Mutex;
 
 use crate::{ReqTypes, Request, Response};
 
@@ -9,7 +9,7 @@ use super::{endpoints::file_upload::FileUpload, Method};
 
 #[derive(Clone)]
 pub struct Api {
-  api_methods: Vec<Arc<Mutex<dyn for<'a> Method<'a> + Send + Sync>>>
+  api_methods: Vec<Arc<Mutex<dyn Method + Send + Sync>>>
 }
 
 impl Api {
@@ -21,7 +21,7 @@ impl Api {
       }
   }
 
-  pub fn handle_api_request<'s, 'r>(&'s self, req: Request<'r>) -> Option<Response<'r>> {
+  pub async fn handle_api_request<'s, 'r>(&'s mut self, req: Request<'r>) -> Option<Response<'r>> {
     let endpoint = match req.get_endpoint().split_once("/api") {
       Some(s) if s.1 != "" => s.1,
       _ => {
@@ -41,7 +41,6 @@ impl Api {
           return None;
         }
       };
-      
       if endpoint.starts_with(locked_m.get_endpoint()) {
         res = match req.get_type() {
           ReqTypes::GET => locked_m.handle_get(req.clone()),
@@ -53,7 +52,7 @@ impl Api {
         }
       }
     }
-    
+        
     None
   }
 }

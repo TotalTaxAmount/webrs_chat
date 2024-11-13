@@ -54,7 +54,7 @@ async fn handle(mut stream: TcpStream, addr: SocketAddr) -> Result<(), Box<dyn s
       req.get_endpoint()
     );
 
-    let res = Handlers::handle_request(req.clone());
+    let res = Handlers::handle_request(req.clone()).await;
     
     if let Some(r) = res {
       respond(w_stream.clone(), r).await;

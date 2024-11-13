@@ -1,9 +1,9 @@
-use std::{cell::LazyCell, collections::HashMap, io::Read, sync::{Arc, LazyLock, Mutex, MutexGuard}, usize};
+use std::{cell::LazyCell, collections::HashMap, io::Read, sync::{Arc, LazyLock, MutexGuard}, usize};
 
 use flate2::{bufread::GzEncoder, Compression};
 use get::handle_get;
 use log::{error, info, trace, warn};
-use tokio::sync::oneshot::error;
+use tokio::sync::{oneshot::error, Mutex};
 
 use crate::{api::api::Api, Request, Response};
 
@@ -67,19 +67,19 @@ impl<'a> Handlers {
 
   }
 
-  pub fn handle_request<'r>(req: Request<'r>) -> Option<Response<'r>> {
+  pub async fn handle_request<'r>(req: Request<'r>) -> Option<Response<'r>> {
     if req.get_endpoint().starts_with("/api") {
       trace!("[Request {}] Passing to api", req.get_id());
 
-      let api_lock  = match api.lock() { // Api is a LazyLock<Mutex<Api>>
+      let mut api_lock  = match api.try_lock() { // Api is a LazyLock<Mutex<Api>>
         Ok(l) => l,
         Err(_) => {
-          error!("[Request {}] Failed to lock api", req.get_id());
+          error!("[Request {}]selfFailed to lock api", req.get_id());
           return None;
         },
       };
 
-      return api_lock.handle_api_request(req);
+      return api_lock.handle_api_request(req).await;
     }
 
     match req.get_type() {
