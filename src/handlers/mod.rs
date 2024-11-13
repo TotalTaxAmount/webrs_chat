@@ -1,15 +1,15 @@
-use std::{cell::LazyCell, collections::HashMap, io::Read, sync::{Arc, LazyLock, MutexGuard}, usize};
+use std::{collections::HashMap, io::Read, sync::LazyLock};
 
 use flate2::{bufread::GzEncoder, Compression};
 use get::handle_get;
 use log::{error, info, trace, warn};
-use tokio::sync::{oneshot::error, Mutex};
+use tokio::sync::Mutex;
 
 use crate::{api::api::Api, Request, Response};
 
 pub mod get;
 
-static api: LazyLock<Mutex<Api>> = LazyLock::new(|| Mutex::new(Api::new()));
+static API: LazyLock<Mutex<Api>> = LazyLock::new(|| Mutex::new(Api::new()));
 pub struct Handlers {}
 
 impl<'a> Handlers {
@@ -71,7 +71,7 @@ impl<'a> Handlers {
     if req.get_endpoint().starts_with("/api") {
       trace!("[Request {}] Passing to api", req.get_id());
 
-      let mut api_lock  = match api.try_lock() { // Api is a LazyLock<Mutex<Api>>
+      let mut api_lock  = match API.try_lock() { // Api is a LazyLock<Mutex<Api>>
         Ok(l) => l,
         Err(_) => {
           error!("[Request {}]selfFailed to lock api", req.get_id());

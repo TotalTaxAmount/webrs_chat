@@ -4,7 +4,7 @@ pub mod api;
 use core::{fmt, str};
 use std::{collections::HashMap, fmt::Display, sync::Arc};
 
-use log::{debug, error, trace};
+use log::{error, trace};
 use tokio::{io::AsyncWriteExt, net::tcp::WriteHalf, sync::Mutex};
 use uid::Id;
 

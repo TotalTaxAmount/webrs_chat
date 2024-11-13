@@ -1,11 +1,11 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, io::Chain, sync::Arc};
 
 use log::{error, trace};
 use tokio::sync::Mutex;
 
 use crate::{ReqTypes, Request, Response};
 
-use super::{endpoints::file_upload::FileUpload, Method};
+use super::{endpoints::{chat::Chat, file_upload::FileUpload}, Method};
 
 #[derive(Clone)]
 pub struct Api {
@@ -16,7 +16,8 @@ impl Api {
   pub fn new() -> Self {
       Api {
         api_methods: vec![
-          Arc::new(Mutex::new(FileUpload { files: HashMap::new(), endpoint: "/file" }))
+          Arc::new(Mutex::new(FileUpload { files: HashMap::new(), endpoint: "/file" })),
+          Arc::new(Mutex::new(Chat::new("/chat")))
         ]
       }
   }
@@ -52,7 +53,7 @@ impl Api {
         }
       }
     }
-        
+
     None
   }
 }

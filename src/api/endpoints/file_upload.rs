@@ -1,8 +1,8 @@
 use core::str;
 use std::{char::from_u32, collections::HashMap, ffi::OsStr, fs::File, io::{Read, Write}, path::Path, vec};
 
-use json::object;
 use log::{trace, warn};
+use serde_json::json;
 use uid::{Id, IdU16};
 
 use crate::{api::Method, Response};
@@ -92,16 +92,16 @@ impl Method for FileUpload<'_> {
       return Some(Response::basic(400, "Bad Request (No data)"));
     }
 
-    let parsed = match json::parse(&String::from_utf8(req.get_data()).unwrap()) {
-      Ok(j) => j,
-      Err(e) => {
-        warn!("Help");
-        return Some(Response::basic(400, "Bad Request"));
-      },
-    };
+    // let parsed = match json ::parse(&String::from_utf8(req.get_data()).unwrap()) {
+    //   Ok(j) => j,
+    //   Err(e) => {
+    //     warn!("Help");
+    //     return Some(Response::basic(400, "Bad Request"));
+    //   },
+    // };
 
     let id = IdU16::<Self>::new().get();
-    let raw_p = format!("files/{}-{}", req.get_id(), &parsed["filename"].as_str()?);
+    let raw_p = format!("files/{}-{}", req.get_id(), "test");
 
     let mut file = match File::create_new(Path::new(&raw_p.clone())) {
         Ok(f) => f,
@@ -111,14 +111,14 @@ impl Method for FileUpload<'_> {
         },
     };
     
-    let _ = file.write_all(&parsed["data"].as_str()?.as_bytes().to_vec());
+    // let _ = file.write_all(Vec::new());
     // self.files.insert(id, Path::new(&raw));    
     let mut res: Response = Response::new(200, "text/json");
 
-    res.set_data_as_slice(object! {
-        id: id
-      }.take().to_string().as_bytes()
-    );
+    // res.set_data_as_slice(object! {
+    //     id: id
+    //   }.take().to_string().as_bytes()
+    // );
 
     Some(res)
   }
