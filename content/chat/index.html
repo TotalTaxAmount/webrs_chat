@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <link rel="stylesheet" href="style.css">
+    <script defer src="login.js"></script>
+</head>
+<body>
+    <div class="login-container">
+        <form id="login-form">
+            <h2>Login</h2>
+            <input type="text" id="user" placeholder="Username" required>
+            <input type="password" id="password" placeholder="Password" required>
+            <div>
+                <label><input type="radio" name="action-type" value="login" checked> Login</label>
+                <label><input type="radio" name="action-type" value="new"> Register</label>
+            </div>
+            <button type="submit">Submit</button>
+        </form>
+    </div>
+</body>
+</html>
