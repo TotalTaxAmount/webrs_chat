@@ -34,7 +34,7 @@ pub fn handle_get(req: Request) -> Option<Response> {
   );
 
   let mut f = File::open(format!("./content/{}", f_name));
-  let mut res = Response::new(200, "text/html".to_string());
+  let mut res = Response::new(200, "text/html");
 
   let mime_type = Box::leak(match mime_guess::from_path(f_name.clone()).first() {
     Some(t) => t.essence_str().to_string().into_boxed_str(),

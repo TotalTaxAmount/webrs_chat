@@ -196,7 +196,20 @@ impl<'a> Method for Chat<'a> {
         let req_json: Value = match serde_json::from_slice(&req.get_data()) {
           Ok(p) => p,
           Err(e) => {
-            return None;
+            error!(
+              "[Request {}] Failed to parse request json: {}",
+              req.get_id(),
+              e
+            );
+            return Some(
+              Response::from_json(
+                400,
+                json!({
+                  "error": "Invalid json"
+                }),
+              )
+              .unwrap(),
+            );
           }
         };
 

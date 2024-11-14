@@ -6,7 +6,7 @@ use tokio::sync::Mutex;
 use crate::{handlers::options::handle_options, ReqTypes, Request, Response};
 
 use super::{
-  endpoints::{chat::Chat, file_upload::FileUpload},
+  endpoints::chat::Chat,
   Method,
 };
 
@@ -18,11 +18,7 @@ pub struct Api {
 impl Api {
   pub fn new() -> Self {
     Api {
-      api_methods: vec![
-        Arc::new(Mutex::new(FileUpload {
-          files: HashMap::new(),
-          endpoint: "/file",
-        })),
+      api_methods: vec![     
         Arc::new(Mutex::new(Chat::new("/chat"))),
       ],
     }

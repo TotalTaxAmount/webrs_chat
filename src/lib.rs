@@ -64,7 +64,7 @@ impl<'a> Response<'a> {
   pub fn new(code: u16, content_type: &'a str) -> Self {
     Self {
       code,
-      content_type,
+      content_type: content_type.to_string(),
       data: Vec::new(),
       headers: HashMap::new(),
       id: Id::new(),
@@ -256,7 +256,9 @@ pub async fn respond(stream: Arc<Mutex<WriteHalf<'_>>>, mut res: Response<'_>) {
   let mut data = format!("HTTP/1.1 {} OK\r\n", res.code).as_bytes().to_vec();
 
   if !res.headers.contains_key("Content-Type") {
-    res.headers.insert("Content-Type", res.content_type.as_str());
+    res
+      .headers
+      .insert("Content-Type", res.content_type.as_str());
   }
 
   if !res.headers.contains_key("Content-Length") {
