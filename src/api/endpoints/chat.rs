@@ -6,7 +6,8 @@ use std::{
   time::{SystemTime, UNIX_EPOCH},
 };
 
-use log::warn;
+use log::{error, info, warn};
+use rand::Rng;
 use serde_json::{json, to_string, Value};
 
 use crate::{api::Method, Request, Response};
@@ -48,7 +49,7 @@ impl<'a> Chat<'a> {
     Some(res)
   }
 
-  fn new_message(req: Request<'a>) -> Option<Response<'a>> {
+  fn new_message(req: Request<'a>, tokens: HashMap<String, String>) -> Option<Response<'a>> {
     let req_parsed: Value = match serde_json::from_slice(&req.get_data()) {
       Ok(v) => v,
       Err(_) => {
@@ -56,6 +57,49 @@ impl<'a> Chat<'a> {
         return Some(Response::basic(400, "Bad Request"));
       }
     };
+
+    let user = match req_parsed["user"].as_str() {
+      Some(s) => s,
+      None => return Some(Response::basic(400, "Bad Request")),
+    };
+
+    let content = match req_parsed["content"].as_str() {
+      Some(s) => s,
+      None => return Some(Response::basic(400, "Bad Request")),
+    };
+
+    let token = match req_parsed["token"].as_str() {
+      Some(s) => s,
+      None => return Some(Response::basic(400, "Bad Request")),
+    };
+
+    if token
+      != match tokens.get(user) {
+        Some(t) => t.as_str(),
+        None => {
+          error!("[Request {}] User {} not logged in", req.get_id(), user);
+          let mut res = Response::new(401, "application/json");
+          res.set_data(
+            to_string(&json!({
+              "error": "Not logged in"
+            }))
+            .unwrap()
+            .into_bytes(),
+          );
+          return Some(res);
+        }
+      }
+    {
+      let mut res = Response::new(401, "application/json");
+      res.set_data(
+        to_string(&json!({
+          "error": "Invalid token"
+        }))
+        .unwrap()
+        .into_bytes(),
+      );
+      return Some(res);
+    }
 
     let mut his_file = match File::options()
       .read(true)
@@ -99,8 +143,8 @@ impl<'a> Chat<'a> {
     messages.insert(
       messages.len(),
       json!({
-        "user": req_parsed["user"],
-        "content": req_parsed["content"],
+        "user": user,
+        "content": content,
         "timestamp": timestamp
       }),
     );
@@ -114,66 +158,6 @@ impl<'a> Chat<'a> {
     his_file.flush().unwrap();
 
     Some(Response::basic(200, "OK"))
-  }
-
-  fn handle_auth(req: Request<'a>) -> Option<Response<'a>> {
-    let req_json: Value = match serde_json::from_slice(&req.get_data()) {
-      Ok(p) => p,
-      Err(e) => {
-        return None;
-      }
-    };
-
-    let mut f = match File::options()
-      .write(true)
-      .read(true)
-      .open(Path::new(AUTH_FILE))
-    {
-      Ok(f) => f,
-      Err(e) => todo!(),
-    };
-
-    let mut buf: Vec<u8> = Vec::new();
-    f.read_to_end(&mut buf).unwrap();
-
-    let parsed: Value = match serde_json::from_slice(&buf) {
-      Ok(v) => v,
-      Err(_) => todo!(),
-    };
-
-    match parsed["type"].as_str() {
-      Some(t) if t == "new" => {
-        let users = parsed["users"].as_array()?;
-        if users.into_iter().all(|f| {
-          f.as_array()
-            .unwrap_or(&Vec::new())
-            .get(0)
-            .unwrap_or(&Value::String("".to_string()))
-            .as_str()
-            == req_json["username"].as_str()
-        }) {
-          warn!(
-            "[Request {}] User '{}' already exists",
-            req.get_id(),
-            req_json["username"].as_str().unwrap()
-          );
-          let mut res = Response::new(422, "application/json");
-          res.set_data(
-            to_string(&json!({
-              "error": "User already exists"
-            }))
-            .unwrap()
-            .into_bytes(),
-          );
-          return Some(res);
-        }
-        None
-      }
-      Some(t) if t == "login" => todo!(),
-      Some(_) | None => {
-        return Some(Response::basic(400, "Bad Request"));
-      }
-    }
   }
 }
 
@@ -203,10 +187,257 @@ impl<'a> Method for Chat<'a> {
       return Some(Response::basic(400, "Bad Request (No data)"));
     }
 
-    match req.get_endpoint().rsplit('/').next() {
-      Some("send") => return Chat::<'r>::new_message(req),
-      Some("auth") => return Chat::<'r>::handle_auth(req),
-      _ => return Some(Response::basic(404, "Not Found")),
+    let mut rng = rand::thread_rng();
+
+    match req.get_endpoint().rsplit_once("/") {
+      Some(s) if s.1 == "send" => return Chat::<'r>::new_message(req, self.tokens.clone()),
+      Some(s) if s.1 == "auth" => {
+        // TODO: Put this into different function
+        let req_json: Value = match serde_json::from_slice(&req.get_data()) {
+          Ok(p) => p,
+          Err(e) => {
+            return None;
+          }
+        };
+
+        let auth_type = match req_json["type"].as_str() {
+          Some(t) => t,
+          None => {
+            error!("[Request {}] No auth type in request", req.get_id());
+            return Some(
+              Response::from_json(
+                400,
+                json!({
+                  "error": "No auth type given"
+                }),
+              )
+              .unwrap(),
+            );
+          }
+        };
+
+        let username = match req_json["user"].as_str() {
+          Some(t) => t,
+          None => {
+            error!("[Request {}] No username in request", req.get_id());
+            return Some(
+              Response::from_json(
+                400,
+                json!({
+                  "error": "No user given"
+                }),
+              )
+              .unwrap(),
+            );
+          }
+        };
+
+        let password = match req_json["password"].as_str() {
+          Some(t) => t,
+          None => {
+            warn!("[Request {}] No password in request", req.get_id());
+            ""
+          }
+        };
+
+        let mut f = match File::options()
+          .write(true)
+          .read(true)
+          .open(Path::new(AUTH_FILE))
+        {
+          Ok(f) => f,
+          Err(e) => {
+            warn!("[Request {}] Error opening file: {}", req.get_id(), e);
+            return Some(Response::basic(500, "Internal Server Error"));
+          }
+        };
+
+        let mut buf: Vec<u8> = Vec::new();
+        f.read_to_end(&mut buf).unwrap();
+        f.flush().unwrap();
+
+        let auth_file_json: Value = match serde_json::from_slice(&buf) {
+          Ok(v) => v,
+          Err(e) => {
+            warn!("[Request {}] Failed to parse json: {}", req.get_id(), e);
+            return Some(Response::basic(400, "Bad Request"));
+          }
+        };
+
+        match auth_type {
+          "new" => {
+            let users = auth_file_json["users"]
+              .as_array()
+              .unwrap_or(&Vec::new())
+              .clone();
+            for f in users {
+              if f["user"] == username {
+                warn!(
+                  "[Request {}] User '{}' already exists",
+                  req.get_id(),
+                  username
+                );
+
+                return Some(
+                  Response::from_json(
+                    422,
+                    json!({
+                      "error": "User already exists"
+                    }),
+                  )
+                  .unwrap(),
+                );
+              }
+            }
+
+            let user = json!({
+              "user": req_json["user"],
+              "password": req_json["password"]
+            });
+
+            let mut users = auth_file_json["users"]
+              .as_array()
+              .unwrap_or(&Vec::new())
+              .clone();
+            users.insert(users.len(), user);
+
+            f.set_len(0).unwrap();
+            f.seek(std::io::SeekFrom::Start(0)).unwrap();
+            f.write_all(
+              to_string(&json!({
+                "users": users
+              }))
+              .unwrap()
+              .as_bytes(),
+            )
+            .unwrap();
+            f.flush().unwrap();
+
+            Some(
+              Response::from_json(
+                200,
+                json!({
+                  "successes": format!("Created new user {}", req_json["user"].as_str().unwrap())
+                }),
+              )
+              .unwrap(),
+            )
+          }
+          "login" => {
+            if !req_json["user"].as_str().is_some() || !req_json["password"].as_str().is_some() {
+              warn!("[Request {}] No username or password", req.get_id());
+              return Some(
+                Response::from_json(
+                  400,
+                  json!({
+                     "error": "No username or password"
+                  }),
+                )
+                .unwrap(),
+              );
+            }
+
+            let users = auth_file_json["users"]
+              .as_array()
+              .unwrap_or(&Vec::new())
+              .clone();
+            for user in users {
+              if user["user"].as_str() == Some(username)
+                && user["password"].as_str() == Some(password)
+              {
+                let random_data: &[u8; 16] = &rng.gen();
+                let token = random_data
+                  .iter()
+                  .map(|b| format!("{:02x}", b))
+                  .collect::<String>();
+
+                self.tokens.insert(
+                  req_json["user"].as_str().unwrap().to_string(),
+                  token.clone(),
+                );
+
+                return Some(
+                  Response::from_json(
+                    200,
+                    json!({
+                      "token": token
+                    }),
+                  )
+                  .unwrap(),
+                );
+              }
+            }
+            return Some(
+              Response::from_json(
+                401,
+                json!({
+                  "error": "Invalid username or password"
+                }),
+              )
+              .unwrap(),
+            );
+          }
+
+          "check" => {
+            let token = match self.tokens.get(username) {
+              Some(t) => t,
+              None => {
+                info!(
+                  "[Request {}] User '{}' not logged in",
+                  req.get_id(),
+                  username
+                );
+                return Some(
+                  Response::from_json(
+                    401,
+                    json!({
+                      "error": format!("User {} is not logged in", username)
+                    }),
+                  )
+                  .unwrap(),
+                );
+              }
+            };
+
+            if token == req_json["token"].as_str().unwrap_or("") {
+              return Some(
+                Response::from_json(
+                  200,
+                  json!({
+                    "successes": "Token is valid"
+                  }),
+                )
+                .unwrap(),
+              );
+            }
+            Some(
+              Response::from_json(
+                401,
+                json!({
+                  "error": "Token is invalid"
+                }),
+              )
+              .unwrap(),
+            )
+          }
+
+          _ => {
+            return Some(
+              Response::from_json(
+                400,
+                json!({
+                  "error": format!("Unknown auth type {}", auth_type)
+                }),
+              )
+              .unwrap(),
+            );
+          }
+        }
+      }
+      s => {
+        error!("[Request {}] '{:?}' is unrecognized", req.get_id(), s);
+        return Some(Response::basic(400, "Bad Request"));
+      }
     }
   }
 }

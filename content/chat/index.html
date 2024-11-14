@@ -3,21 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat App</title>
+    <title>Login</title>
     <link rel="stylesheet" href="style.css">
+    <script defer src="login.js"></script>
 </head>
 <body>
-    <div class="login-container" id="login-container">
-        <input type="text" id="login-username" placeholder="Enter your username" required>
-        <button id="login-button">Login</button>
+    <div class="login-container">
+        <form id="login-form">
+            <h2>Login</h2>
+            <input type="text" id="user" placeholder="Username" required>
+            <input type="password" id="password" placeholder="Password" required>
+            <div>
+                <label><input type="radio" name="action-type" value="login" checked> Login</label>
+                <label><input type="radio" name="action-type" value="new"> Register</label>
+            </div>
+            <button type="submit">Submit</button>
+        </form>
     </div>
-    <div class="chat-container" id="chat-container" style="display: none;">
-        <div id="chat-window" class="chat-window"></div>
-        <div class="input-area">
-            <input type="text" id="message-input" placeholder="Type a message" required>
-            <button id="send-button">Send</button>
-        </div>
-    </div>
-    <script src="main.js"></script>
 </body>
 </html>

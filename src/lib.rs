@@ -2,9 +2,14 @@ pub mod api;
 pub mod handlers;
 
 use core::{fmt, str};
-use std::{collections::HashMap, fmt::Display, sync::Arc};
+use std::{
+  collections::HashMap,
+  fmt::{Display, Error},
+  sync::Arc,
+};
 
 use log::{error, trace};
+use serde_json::{to_string, Value};
 use tokio::{io::AsyncWriteExt, net::tcp::WriteHalf, sync::Mutex};
 use uid::Id;
 
@@ -114,6 +119,21 @@ impl<'a> Response<'a> {
     res.set_data(http.as_bytes().to_vec());
 
     res
+  }
+
+  pub fn from_json(code: u16, json: Value) -> Result<Self, serde_json::Error> {
+    let mut res = Self::new(code, "application/json");
+    let json_string = match to_string(&json) {
+      Ok(s) => s,
+      Err(e) => {
+        error!("Failed to stringify json: {}", e);
+        return Err(e);
+      }
+    };
+
+    res.set_data(json_string.into_bytes());
+
+    Ok(res)
   }
 }
 
