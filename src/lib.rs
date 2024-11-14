@@ -75,6 +75,10 @@ impl<'a> Response<'a> {
     self.data = data;
   }
 
+  pub fn get_data(&self) -> Vec<u8> {
+    self.data.clone()
+  }
+
   pub fn set_data_as_slice(&mut self, data: &[u8]) {
     self.data = data.to_vec();
   }

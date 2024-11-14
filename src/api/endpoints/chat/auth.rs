@@ -1,3 +1,4 @@
+use core::hash;
 use std::{
   collections::HashMap,
   fs::File,
@@ -7,6 +8,7 @@ use std::{
 
 use log::{error, info, warn};
 use serde_json::{json, to_string, Value};
+use sha2::{Digest, Sha256};
 
 use crate::{Request, Response};
 use rand::Rng;
@@ -124,9 +126,16 @@ pub(super) fn handle_auth<'r>(
         }
       }
 
+      let mut hasher = Sha256::new();
+      hasher.update(password.unwrap());
+      let hashed_password = hasher
+        .finalize()
+        .iter()
+        .map(|b| format!("{:02x}", b))
+        .collect::<String>();
       let user = json!({
         "user": req_json["user"],
-        "password": req_json["password"]
+        "password":  hashed_password
       });
 
       let mut users = auth_file_json["users"]
@@ -178,8 +187,18 @@ pub(super) fn handle_auth<'r>(
         .unwrap_or(&Vec::new())
         .clone();
 
+      let mut hasher = Sha256::new();
+      hasher.update(password.unwrap());
+      let hashed_password = hasher
+        .finalize()
+        .iter()
+        .map(|b| format!("{:02x}", b))
+        .collect::<String>();
+
       for user in registered_users {
-        if user["user"].as_str() == Some(username) && user["password"].as_str() == password {
+        if user["user"].as_str() == Some(username)
+          && user["password"].as_str() == Some(&hashed_password)
+        {
           let random_bytes: &[u8; 16] = &rng.gen();
           let token = random_bytes
             .iter()

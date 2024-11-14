@@ -41,19 +41,31 @@ async function checkToken(username, token) {
 
 async function loadMessages() {
   try {
-    const response = await fetch('/api/chat/messages');
+    const response = await fetch('/api/chat/messages', {
+      method: 'GET',
+      headers: {'Auth': `${localStorage.getItem("username")}:${localStorage.getItem("token")}`}
+    });
     if (response.ok) {
       const data = await response.json();
       const messagesContainer = document.getElementById('messages');
       messagesContainer.innerHTML = '';
-      data.messages.forEach(msg => {
-        const messageDiv = document.createElement('div');
-        messageDiv.classList.add('message');
-        const timestamp = new Date(msg.timestamp).toLocaleTimeString();
-        messageDiv.innerHTML = `<div class="timestamp">${timestamp}</div><div>${msg.user}: ${msg.content}</div>`;
-        messagesContainer.appendChild(messageDiv);
-      });
+      if (data.messages != undefined) {
+        data.messages.forEach(msg => {
+          const messageDiv = document.createElement('div');
+          messageDiv.classList.add('message');
+          const timestamp = new Date(msg.timestamp).toLocaleString();
+          const safeContent = msg.content.replace(/\n/g, '<br>'); // Replace \n with <br>
+          messageDiv.innerHTML = `<div class="timestamp">${timestamp}</div><div>${msg.user}: ${safeContent}</div>`;
+          messagesContainer.appendChild(messageDiv);
+        });
+      } else {
+        const noMessages = document.createElement('div');
+        noMessages.classList.add('no-message');
+        noMessages.innerHTML = `No messages...`;
+        messagesContainer.appendChild(noMessages);
+      }
     } else {
+      console.log(response.body)
       alert('Failed to load messages');
     }
   } catch (error) {
@@ -62,7 +74,8 @@ async function loadMessages() {
   }
 }
 
-setInterval(loadMessages, 3000)
+
+setInterval(loadMessages, 3000);
 
 async function sendMessage() {
   const input = document.getElementById('chat-input');

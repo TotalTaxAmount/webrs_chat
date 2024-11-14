@@ -94,12 +94,12 @@ impl<'a> Handlers {
       return api_lock.handle_api_request(req).await;
     }
 
-    match req.get_type() {
+    let res = match req.get_type() {
       crate::ReqTypes::GET => {
-        return handle_get(req);
+        handle_get(req)
       }
       crate::ReqTypes::OPTIONS => {
-        return handle_options(req);
+        return handle_options(req)
       }
       crate::ReqTypes::POST => {
         warn!(
@@ -108,6 +108,8 @@ impl<'a> Handlers {
         );
         return Some(Response::basic(405, "Method Not Allowed"));
       }
-    }
+    };
+
+    res
   }
 }

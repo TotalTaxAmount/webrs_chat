@@ -9,7 +9,7 @@ use std::{
 };
 
 use auth::handle_auth;
-use log::{error, info, warn};
+use log::{error, warn};
 use serde_json::{json, to_string, Value};
 
 use crate::{api::Method, Request, Response};
@@ -29,7 +29,33 @@ impl<'a> Chat<'a> {
     }
   }
 
-  fn get_messages(req: Request<'a>) -> Option<Response<'a>> {
+  fn get_messages(req: Request<'a>, tokens: HashMap<String, String>) -> Option<Response<'a>> {
+    if !req.get_headers().contains_key("Auth")
+      || req
+        .get_headers()
+        .get("Auth")
+        .unwrap()
+        .split_once(":")
+        .into_iter()
+        .any(|(u, t)| match tokens.get(u) {
+            Some(t) => t,
+            None => {
+              error!("[Request {}] Invalid user", req.get_id());
+              return true;
+            },
+        } != &t.to_string())
+    {
+      error!("[Request {}] Invalid token for user", req.get_id());
+      return Some(
+        Response::from_json(
+          401,
+          json!({
+            "error": "Invalid token"
+          }),
+        )
+        .unwrap(),
+      );
+    }
     let mut his_file = match File::open(Path::new(CHAT_HISTORY_FILE)) {
       Ok(f) => f,
       Err(e) => {
@@ -120,9 +146,15 @@ impl<'a> Chat<'a> {
         Some(t) => t.as_str(),
         None => {
           error!("[Request {}] User {} not logged in", req.get_id(), user);
-          return Some(Response::from_json(401, json!({
-            "error": "User not logged in"
-          })).unwrap());
+          return Some(
+            Response::from_json(
+              401,
+              json!({
+                "error": "User not logged in"
+              }),
+            )
+            .unwrap(),
+          );
         }
       }
     {
@@ -193,9 +225,15 @@ impl<'a> Chat<'a> {
     his_file.write(final_json.as_bytes()).unwrap();
     his_file.flush().unwrap();
 
-    Some(Response::from_json(200, json!({
-      "success": "message sent"
-    })).unwrap())
+    Some(
+      Response::from_json(
+        200,
+        json!({
+          "success": "message sent"
+        }),
+      )
+      .unwrap(),
+    )
   }
 }
 
@@ -205,20 +243,22 @@ impl<'a> Method for Chat<'a> {
   }
 
   /// Handle GET method for chat api
-  /// 
+  ///
   /// **/api/chat/messages**:
-  /// 
+  ///
   /// **Example**: GET /api/chat/messages
-  /// 
+  ///   - *headers*: ```"Auth": "<username>:<token>"```
+  ///
   /// **Responses**:
   /// - *500*: If the server returns an error
+  /// - *401*: ```{"error": "Invalid token"}``` -> If token is invalid
   /// - *200*: ```{"messages": [ { "user": "<username>", "content": "<message content>", "timestamp": <unix timestamp mills> }, <...> ]}``` -> List of all the sent messages
   fn handle_get<'s, 'r>(&'s self, req: crate::Request<'r>) -> Option<crate::Response<'r>>
   where
     'r: 's,
   {
     match req.get_endpoint().rsplit("/").next() {
-      Some("messages") => return Chat::<'r>::get_messages(req),
+      Some("messages") => return Chat::<'r>::get_messages(req, self.tokens.clone()),
       _ => {
         return Some(Response::basic(404, "Not Found"));
       }
