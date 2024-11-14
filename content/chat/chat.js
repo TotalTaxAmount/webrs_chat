@@ -1,68 +1,92 @@
-document.addEventListener('DOMContentLoaded', () => {
-  const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
+window.onload = async function() {
+  const token = localStorage.getItem('token');
+  const username = localStorage.getItem('username');
 
-  if (!token) {
-      alert('Session expired or not logged in. Redirecting to login page.');
-      window.location.href = 'index.html';
-      return;
+  if (token && username) {
+    const isValid = await checkToken(username, token);
+    if (!isValid) {
+      window.location.href = 'login.html';
+    } else {
+      loadMessages();
+    }
+  } else {
+    window.location.href = 'login.html';
   }
 
-  async function fetchMessages() {
-      try {
-          const response = await fetch(`${window.location.origin}/api/chat/messages`);
-          const data = await response.json();
-          displayMessages(data.messages);
-      } catch (error) {
-          console.error('Error fetching messages:', error);
-      }
-  }
-
-  function displayMessages(messages) {
-      const chatWindow = document.getElementById('chat-window');
-      chatWindow.innerHTML = '';
-      if (messages && messages.length > 0) {
-          messages.forEach(msg => {
-              const messageDiv = document.createElement('div');
-              messageDiv.classList.add('message');
-              const timestamp = new Date(msg.timestamp).toLocaleTimeString();
-              messageDiv.textContent = `[${timestamp}] ${msg.user}: ${msg.content}`;
-              chatWindow.appendChild(messageDiv);
-          });
-          chatWindow.scrollTop = chatWindow.scrollHeight;
-      } else {
-          chatWindow.textContent = 'No messages to display.';
-      }
-  }
-
-  async function sendMessage() {
-      const content = document.getElementById('message-input').value.trim();
-
-      if (!content) {
-          alert('Please enter a message.');
-          return;
-      }
-
-      try {
-          const data = await fetch(`${window.location.origin}/api/chat/send`, {
-              method: 'POST',
-              headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify({
-                  user: localStorage.getItem('user'),
-                  content: content,
-                  token: token
-              })
-          });
-          document.getElementById('message-input').value = '';
-          fetchMessages();
-      } catch (error) {
-          console.error('Error sending message:', error);
-      }
-  }
+  document.getElementById('logout-button').addEventListener('click', () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    window.location.href = 'login.html';
+  });
 
   document.getElementById('send-button').addEventListener('click', sendMessage);
-  fetchMessages();
-  setInterval(fetchMessages, 3000);
-});
+};
+
+async function checkToken(username, token) {
+  try {
+    const response = await fetch('/api/chat/auth', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ type: "check", user: username, token })
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.error('Error verifying token:', error);
+    return false;
+  }
+}
+
+async function loadMessages() {
+  try {
+    const response = await fetch('/api/chat/messages');
+    if (response.ok) {
+      const data = await response.json();
+      const messagesContainer = document.getElementById('messages');
+      messagesContainer.innerHTML = '';
+      data.messages.forEach(msg => {
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('message');
+        const timestamp = new Date(msg.timestamp).toLocaleTimeString();
+        messageDiv.innerHTML = `<div class="timestamp">${timestamp}</div><div>${msg.user}: ${msg.content}</div>`;
+        messagesContainer.appendChild(messageDiv);
+      });
+    } else {
+      alert('Failed to load messages');
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error loading messages');
+  }
+}
+
+setInterval(loadMessages, 3000)
+
+async function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const content = input.value;
+  const username = localStorage.getItem('username');
+  const token = localStorage.getItem('token');
+
+  if (content.trim() === '') return;
+
+  try {
+    const response = await fetch('/api/chat/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user: username, content, token })
+    });
+    if (response.ok) {
+      input.value = '';
+      loadMessages();
+    } else {
+      const error = await response.json();
+      alert(`Error: ${error.error}`);
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Failed to send message');
+  }
+}

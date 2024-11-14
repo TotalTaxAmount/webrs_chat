@@ -5,10 +5,7 @@ use tokio::sync::Mutex;
 
 use crate::{handlers::options::handle_options, ReqTypes, Request, Response};
 
-use super::{
-  endpoints::chat::Chat,
-  Method,
-};
+use super::{endpoints::chat::Chat, Method};
 
 #[derive(Clone)]
 pub struct Api {
@@ -18,9 +15,7 @@ pub struct Api {
 impl Api {
   pub fn new() -> Self {
     Api {
-      api_methods: vec![     
-        Arc::new(Mutex::new(Chat::new("/chat"))),
-      ],
+      api_methods: vec![Arc::new(Mutex::new(Chat::new("/chat")))],
     }
   }
 
