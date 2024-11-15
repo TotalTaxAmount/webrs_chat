@@ -89,11 +89,16 @@ async fn handle(mut stream: TcpStream, addr: SocketAddr) -> Result<(), Box<dyn s
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
-  if let Err(_) = std::env::var("RUST_LOG") {
-    std::env::set_var("RUST_LOG", "info");
+  if let Err(_) = std::env::var("SERVER_LOG") {
+    std::env::set_var("SERVER_LOG", "info");
   }
 
-  pretty_env_logger::init();
+  pretty_env_logger::formatted_timed_builder()
+    .format_timestamp_millis()
+    .parse_env("SERVER_LOG")
+    .init();
+
+
 
   let listener = TcpListener::bind("0.0.0.0:8080").await?;
   info!("Started listening on port 8080");
