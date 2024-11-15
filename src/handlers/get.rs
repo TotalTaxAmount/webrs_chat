@@ -56,7 +56,7 @@ pub fn handle_get(req: Request) -> Option<Response> {
           req_id,
           final_data.1.as_ref().unwrap()
         );
-        res.add_header("Content-Encoding", final_data.1.unwrap());
+        res.add_header("content-encoding".to_string(), final_data.1.unwrap());
       }
       res.set_code(200);
       res.set_content_type(mime_type.to_string());

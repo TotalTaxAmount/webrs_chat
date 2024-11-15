@@ -30,10 +30,10 @@ impl<'a> Chat<'a> {
   }
 
   fn get_messages(req: Request<'a>, tokens: HashMap<String, String>) -> Option<Response<'a>> {
-    if !req.get_headers().contains_key("Auth")
+    if !req.get_headers().contains_key("auth")
       || req
         .get_headers()
-        .get("Auth")
+        .get("auth")
         .unwrap()
         .split_once(":")
         .into_iter()

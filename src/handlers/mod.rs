@@ -16,7 +16,7 @@ pub struct Handlers {}
 
 impl<'a> Handlers {
   pub fn handle_encoding(req: Request<'a>, mut buf: Vec<u8>) -> (Vec<u8>, Option<&'a str>) {
-    if !req.get_headers().contains_key("Accept-Encoding") {
+    if !req.get_headers().contains_key("accept-encoding") {
       info!(
         "[Request {}] Request does not support compression",
         req.get_id()
@@ -26,7 +26,7 @@ impl<'a> Handlers {
 
     let mut compression_types: Vec<&str> = req
       .get_headers()
-      .get("Accept-Encoding")
+      .get("accept-encoding")
       .unwrap()
       .split(", ")
       .collect();
@@ -86,7 +86,7 @@ impl<'a> Handlers {
         // Api is a LazyLock<Mutex<Api>>
         Ok(l) => l,
         Err(_) => {
-          error!("[Request {}]selfFailed to lock api", req.get_id());
+          error!("[Request {}] Failed to lock api", req.get_id());
           return None;
         }
       };

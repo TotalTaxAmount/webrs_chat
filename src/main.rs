@@ -71,7 +71,7 @@ async fn handle(mut stream: TcpStream, addr: SocketAddr) -> Result<(), Box<dyn s
       respond(w_stream.clone(), Response::basic(400, "Bad Request")).await;
     }
 
-    if let Some(c) = req.get_headers().get("Connection") {
+    if let Some(c) = req.get_headers().get("connection") {
       if c.to_ascii_lowercase() != "keep-alive" {
         trace!("[Request {}] Connection: {}", req_id, c);
         break;
@@ -89,11 +89,14 @@ async fn handle(mut stream: TcpStream, addr: SocketAddr) -> Result<(), Box<dyn s
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
-  if let Err(_) = std::env::var("RUST_LOG") {
-    std::env::set_var("RUST_LOG", "info");
+  if let Err(_) = std::env::var("SERVER_LOG") {
+    std::env::set_var("SERVER_LOG", "info");
   }
 
-  pretty_env_logger::init();
+  pretty_env_logger::formatted_timed_builder()
+    .parse_env("SERVER_LOG")
+    .format_timestamp_millis()
+    .init();
 
   let listener = TcpListener::bind("0.0.0.0:8080").await?;
   info!("Started listening on port 8080");
