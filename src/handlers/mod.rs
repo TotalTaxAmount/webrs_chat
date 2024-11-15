@@ -41,7 +41,7 @@ impl<'a> Handlers {
     for compression_type in compression_types {
       match compression_type {
         "gzip" => {
-          algorithm = Some(compression_type);
+          algorithm = Some("gzip");
 
           let mut read_buf: Vec<u8> = Vec::new();
           let mut e = GzEncoder::new(buf.as_slice(), Compression::default());
@@ -52,12 +52,13 @@ impl<'a> Handlers {
           break;
         }
         "zstd" => {
-          algorithm = Some(compression_type);
+          algorithm = Some("zstd");
 
           buf = zstd::encode_all(buf.as_slice(), 3).unwrap();
           break;
         }
         "br" => {
+          algorithm = Some("br");
           let mut read_buf: Vec<u8> = Vec::new();
           let mut e = brotli::CompressorReader::new(buf.as_slice(), 4096, 11, 21);
 
