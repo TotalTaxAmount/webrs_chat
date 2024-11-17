@@ -1,0 +1,7 @@
+port = 8080
+content_dir = "content"
+
+[compression]
+zstd = true
+br = true
+gzip = true
