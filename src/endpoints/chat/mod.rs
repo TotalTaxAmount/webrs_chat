@@ -1,18 +1,15 @@
 mod auth;
 
 use std::{
-  collections::HashMap,
-  fs::File,
-  io::{Read, Seek, Write},
-  path::Path,
-  time::{SystemTime, UNIX_EPOCH},
+  collections::HashMap, fs::File, io::{Read, Seek, Write}, path::Path, sync::Arc, time::{SystemTime, UNIX_EPOCH}
 };
 
 use auth::handle_auth;
 use log::{error, warn};
 use serde_json::{json, to_string, Value};
 
-use crate::{api::Method, Request, Response};
+use tokio::sync::Mutex;
+use webrs::{api::Method, Request, Response};
 
 const CHAT_HISTORY_FILE: &str = "history.json";
 
@@ -22,11 +19,11 @@ pub struct Chat<'a> {
 }
 
 impl<'a> Chat<'a> {
-  pub fn new(endpoint: &'a str) -> Self {
-    Self {
+  pub fn new(endpoint: &'a str) -> Arc<Mutex<Self>> {
+    Arc::new(Mutex::new(Self {
       endpoint,
       tokens: HashMap::new(),
-    }
+    }))
   }
 
   fn get_messages(req: Request<'a>, tokens: HashMap<String, String>) -> Option<Response<'a>> {
@@ -253,7 +250,7 @@ impl<'a> Method for Chat<'a> {
   /// - *500*: If the server returns an error
   /// - *401*: ```{"error": "Invalid token"}``` -> If token is invalid
   /// - *200*: ```{"messages": [ { "user": "<username>", "content": "<message content>", "timestamp": <unix timestamp mills> }, <...> ]}``` -> List of all the sent messages
-  fn handle_get<'s, 'r>(&'s self, req: crate::Request<'r>) -> Option<crate::Response<'r>>
+  fn handle_get<'s, 'r>(&'s self, req: Request<'r>) -> Option<Response<'r>>
   where
     'r: 's,
   {
@@ -301,7 +298,7 @@ impl<'a> Method for Chat<'a> {
   /// - 401: ```{"error", "Invalid token"}``` -> The token is invalid
   /// - 500: Internal Server Error
   /// - 200: ```{"success": "message sent"}``` -> The message was sent successfully
-  fn handle_post<'s, 'r>(&'s mut self, req: crate::Request<'r>) -> Option<crate::Response<'r>>
+  fn handle_post<'s, 'r>(&'s mut self, req: Request<'r>) -> Option<Response<'r>>
   where
     'r: 's,
   {

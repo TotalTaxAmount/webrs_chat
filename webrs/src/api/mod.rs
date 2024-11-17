@@ -1,7 +1,6 @@
 use crate::{Request, Response};
 
 pub mod api;
-pub mod endpoints;
 
 pub trait Method: Send + Sync {
   fn get_endpoint(&self) -> &str;

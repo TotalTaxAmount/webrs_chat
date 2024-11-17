@@ -6,16 +6,15 @@ use log::{error, info, trace, warn};
 use options::handle_options;
 use tokio::sync::Mutex;
 
-use crate::{api::api::Api, Request, Response};
+use crate::{api::api::Api, Request, Response, WebrsHttp};
 
 pub mod get;
 pub mod options;
 
-static API: LazyLock<Mutex<Api>> = LazyLock::new(|| Mutex::new(Api::new()));
 pub struct Handlers {}
 
 impl<'a> Handlers {
-  pub fn handle_encoding(req: Request<'a>, mut buf: Vec<u8>) -> (Vec<u8>, Option<&'a str>) {
+  pub fn handle_compression(server: &WebrsHttp, req: Request<'a>, mut buf: Vec<u8>) -> (Vec<u8>, Option<&'a str>) {
     if !req.get_headers().contains_key("accept-encoding") {
       info!(
         "[Request {}] Request does not support compression",
@@ -42,7 +41,7 @@ impl<'a> Handlers {
 
     for compression_type in compression_types {
       match compression_type {
-        "gzip" => {
+        "gzip" if server.compression.2 => {
           algorithm = Some("gzip");
 
           let mut read_buf: Vec<u8> = Vec::new();
@@ -53,13 +52,13 @@ impl<'a> Handlers {
           buf = read_buf;
           break;
         }
-        "zstd" => {
+        "zstd" if server.compression.0 => {
           algorithm = Some("zstd");
 
           buf = zstd::encode_all(buf.as_slice(), 3).unwrap();
           break;
         }
-        "br" => {
+        "br" if server.compression.1 => {
           algorithm = Some("br");
           let mut read_buf: Vec<u8> = Vec::new();
           let mut e = brotli::CompressorReader::new(buf.as_slice(), 4096, 11, 21);
@@ -82,24 +81,15 @@ impl<'a> Handlers {
     (buf, algorithm)
   }
 
-  pub async fn handle_request<'r>(req: Request<'r>) -> Option<Response<'r>> {
+  pub async fn handle_request<'r>(server: &WebrsHttp,req: Request<'r>) -> Option<Response<'r>> {
     if req.get_endpoint().starts_with("/api") {
       trace!("[Request {}] Passing to api", req.get_id());
 
-      let mut api_lock = match API.try_lock() {
-        // Api is a LazyLock<Mutex<Api>>
-        Ok(l) => l,
-        Err(_) => {
-          error!("[Request {}] Failed to lock api", req.get_id());
-          return None;
-        }
-      };
-
-      return api_lock.handle_api_request(req).await;
+      return Api::handle_api_request(server, req).await;
     }
 
     let res = match req.get_type() {
-      crate::ReqTypes::GET => handle_get(req),
+      crate::ReqTypes::GET => handle_get(server, req),
       crate::ReqTypes::OPTIONS => return handle_options(req),
       crate::ReqTypes::POST => {
         warn!(

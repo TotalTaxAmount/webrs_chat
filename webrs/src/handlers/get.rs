@@ -2,11 +2,11 @@ use std::{fs::File, io::Read};
 
 use log::{error, trace, warn};
 
-use crate::{ReqTypes, Request, Response};
+use crate::{ReqTypes, Request, Response, WebrsHttp};
 
 use super::Handlers;
 
-pub fn handle_get(req: Request) -> Option<Response> {
+pub fn handle_get<'a, 'b>(server: &'a WebrsHttp, req: Request<'b>) -> Option<Response<'b>> {
   if req.get_type() != ReqTypes::GET {
     warn!(
       "[Request {}] Request method is {:?} not GET",
@@ -33,7 +33,7 @@ pub fn handle_get(req: Request) -> Option<Response> {
     content_type
   );
 
-  let mut f = File::open(format!("./content/{}", f_name));
+  let mut f = File::open(format!("./{}/{}", server.content_dir, f_name));
   let mut res = Response::new(200, "text/html");
 
   let mime_type = Box::leak(match mime_guess::from_path(f_name.clone()).first() {
@@ -48,7 +48,7 @@ pub fn handle_get(req: Request) -> Option<Response> {
       let _ = f.read_to_end(&mut res_data);
 
       let req_id = req.get_id();
-      let final_data = Handlers::handle_encoding(req, res_data);
+      let final_data = Handlers::handle_compression(server ,req, res_data);
 
       if final_data.1.is_some() {
         trace!(

@@ -1,28 +1,15 @@
-use std::{collections::HashMap, io::Chain, sync::Arc};
+use std::sync::Arc;
 
 use log::{error, trace};
 use tokio::sync::Mutex;
 
-use crate::{handlers::options::handle_options, ReqTypes, Request, Response};
-
-use super::{endpoints::{chat::Chat, secure::Secure}, Method};
+use crate::{handlers::options::handle_options, ReqTypes, Request, Response, WebrsHttp};
 
 #[derive(Clone)]
-pub struct Api {
-  api_methods: Vec<Arc<Mutex<dyn Method + Send + Sync>>>,
-}
+pub struct Api {}
 
 impl Api {
-  pub fn new() -> Self {
-    Api {
-      api_methods: vec![
-        Arc::new(Mutex::new(Chat::new("/chat"))),
-        Arc::new(Mutex::new(Secure::new("/secure")))
-      ],
-    }
-  }
-
-  pub async fn handle_api_request<'s, 'r>(&'s mut self, req: Request<'r>) -> Option<Response<'r>> {
+  pub async fn handle_api_request<'s, 'r>(server: &'s WebrsHttp, req: Request<'r>) -> Option<Response<'r>> {
     let endpoint = match req.get_endpoint().split_once("/api") {
       Some(s) if s.1 != "" => s.1,
       _ => {
@@ -34,7 +21,7 @@ impl Api {
 
     let mut res: Option<Response>;
 
-    for m in &self.api_methods {
+    for m in &server.api_methods {
       let mut locked_m = match m.try_lock() {
         Ok(m) => m,
         Err(e) => {

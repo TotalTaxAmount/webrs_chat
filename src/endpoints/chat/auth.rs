@@ -10,7 +10,7 @@ use log::{error, info, warn};
 use serde_json::{json, to_string, Value};
 use sha2::{Digest, Sha256};
 
-use crate::{Request, Response};
+use webrs::{Request, Response};
 use rand::Rng;
 
 const AUTH_FILE: &str = "auth.json";
