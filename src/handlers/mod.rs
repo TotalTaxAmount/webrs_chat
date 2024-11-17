@@ -33,6 +33,8 @@ impl<'a> Handlers {
 
     let mut algorithm = None;
 
+    trace!("{:?}", compression_types);
+
     let order = ["zstd", "br", "gzip"]; // Compression preference order
     let order_map: HashMap<&str, usize> =
       order.into_iter().enumerate().map(|(i, s)| (s, i)).collect();
@@ -65,6 +67,7 @@ impl<'a> Handlers {
           let _ = e.read_to_end(&mut read_buf);
 
           buf = read_buf;
+          break;
         }
         _ => {
           warn!(
@@ -96,12 +99,8 @@ impl<'a> Handlers {
     }
 
     let res = match req.get_type() {
-      crate::ReqTypes::GET => {
-        handle_get(req)
-      }
-      crate::ReqTypes::OPTIONS => {
-        return handle_options(req)
-      }
+      crate::ReqTypes::GET => handle_get(req),
+      crate::ReqTypes::OPTIONS => return handle_options(req),
       crate::ReqTypes::POST => {
         warn!(
           "[Request {}] POST not allowed for non-api methods",
