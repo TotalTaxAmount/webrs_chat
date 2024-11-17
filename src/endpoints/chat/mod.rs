@@ -1,7 +1,12 @@
 mod auth;
 
 use std::{
-  collections::HashMap, fs::File, io::{Read, Seek, Write}, path::Path, sync::Arc, time::{SystemTime, UNIX_EPOCH}
+  collections::HashMap,
+  fs::File,
+  io::{Read, Seek, Write},
+  path::Path,
+  sync::Arc,
+  time::{SystemTime, UNIX_EPOCH},
 };
 
 use auth::handle_auth;
