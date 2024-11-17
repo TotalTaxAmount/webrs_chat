@@ -128,6 +128,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
+name = "chat_test"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "rand",
+ "serde_json",
+ "sha2",
+ "tokio",
+ "webrs",
+]
+
+[[package]]
 name = "cpufeatures"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -649,18 +661,6 @@ name = "wasi"
 version = "0.11.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
-
-[[package]]
-name = "web_srv"
-version = "0.1.0"
-dependencies = [
- "log",
- "rand",
- "serde_json",
- "sha2",
- "tokio",
- "webrs",
-]
 
 [[package]]
 name = "webrs"

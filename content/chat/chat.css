@@ -15,6 +15,7 @@ body {
   flex-direction: column;
   width: 90%;
   max-width: 800px;
+  height: 90vh; /* Added height to better visualize the scroll area */
   background-color: #1e1e1e;
   border-radius: 12px;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
@@ -48,7 +49,7 @@ header h1 {
 
 #messages {
   flex: 1;
-  overflow-y: auto;
+  overflow-y: auto; /* Allows scrolling when content overflows */
   padding: 16px;
   background-color: #1e1e1e;
   border-bottom: 1px solid #333;

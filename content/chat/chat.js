@@ -39,6 +39,15 @@ async function checkToken(username, token) {
   }
 }
 
+function escapeHTML(str) {
+  return str.replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+}
+
+
 async function loadMessages() {
   try {
     const response = await fetch('/api/chat/messages', {
@@ -54,7 +63,7 @@ async function loadMessages() {
           const messageDiv = document.createElement('div');
           messageDiv.classList.add('message');
           const timestamp = new Date(msg.timestamp).toLocaleString();
-          const safeContent = msg.content.replace(/\n/g, '<br>'); // Replace \n with <br>
+          const safeContent = escapeHTML(msg.content).replace(/\n/g, '<br>'); // Replace \n with <br>
           messageDiv.innerHTML = `<div class="timestamp">${timestamp}</div><div>${msg.user}: ${safeContent}</div>`;
           messagesContainer.appendChild(messageDiv);
         });
@@ -101,5 +110,11 @@ async function sendMessage() {
   } catch (error) {
     console.error('Error:', error);
     alert('Failed to send message');
+  }
+}
+
+window.onkeydown = function(e) {
+  if (e.key == "Enter") {
+    sendMessage()
   }
 }
