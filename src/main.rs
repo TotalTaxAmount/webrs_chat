@@ -1,11 +1,11 @@
 mod endpoints;
-use std::{fs::File, io::{Read, Write}, path::Path, process::exit, sync::Arc};
+use std::{fs::File, io::{Read, Write}, path::Path, process::exit, sync::Arc, vec};
 
 use chat_test::Config;
 use endpoints::chat::Chat;
 use log::{error, warn};
 use tokio::sync::Mutex;
-use webrs::{api::Method, WebrsHttp};
+use webrs::{api::ApiMethod, server::WebrsHttp};
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
@@ -18,7 +18,7 @@ async fn main() -> std::io::Result<()> {
     .format_timestamp_millis()
     .init();
 
-  let api_methods: Vec<Arc<Mutex<dyn Method + Send + Sync>>> = vec![Chat::new("/chat")];
+  let api_methods: Vec<Arc<Mutex<dyn ApiMethod + Send + Sync>>> = vec![Chat::new("/chat")];
   
   let set_default = !Path::new("config.toml").exists();
 
